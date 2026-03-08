@@ -6,7 +6,8 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
-    "build": "electron-packager . windows-npm-runner --platform=win32 --arch=x64 --icon=assets/icon.ico --out=dist --overwrite --prune=true --ignore=dist --ignore=assets/icon-square.png --ignore=assets/icon-concept.png --ignore=assets/icon-1024.png"
+    "prebuild": "node scripts/build-icon.js",
+    "build": "electron-packager . windows-npm-runner --platform=win32 --arch=x64 --icon=assets/icon.ico --out=dist --overwrite --prune=true --ignore=dist --ignore=scripts --ignore=assets/icon-square.png --ignore=assets/icon-concept.png --ignore=assets/icon-1024.png"
   },
   "dependencies": {
     "@xterm/addon-fit": "^0.10.0",
@@ -15,7 +16,7 @@
   "devDependencies": {
     "@electron/packager": "^18.3.6",
     "electron": "^33.0.0",
-    "jimp": "^1.6.0",
-    "png-to-ico": "^3.0.1"
+    "png-to-ico": "^3.0.1",
+    "sharp": "^0.34.5"
   }
 }
