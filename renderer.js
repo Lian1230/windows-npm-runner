@@ -608,6 +608,7 @@ function openScriptTab(name, options = {}) {
     if (existingTab.script !== name) continue;
     const pane = panes.get(existingTab.paneId);
     if (pane) pane.switchToTab(existingId);
+    if (!existingTab.running && !existingTab.busy) startScript(existingId);
     return;
   }
 
@@ -627,6 +628,7 @@ function openScriptTab(name, options = {}) {
   tabs.set(id, tab);
   targetPane.addTab(id, tab);
   updateTabButtons(id);
+  startScript(id);
 }
 
 function updateTabButtons(id) {
