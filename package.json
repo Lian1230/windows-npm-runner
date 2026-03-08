@@ -1,0 +1,21 @@
+{
+  "name": "windows-npm-runner",
+  "version": "1.0.0",
+  "description": "Lightweight Electron app to run npm scripts in Git Bash with full terminal output",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-packager . windows-npm-runner --platform=win32 --arch=x64 --icon=assets/icon.ico --out=dist --overwrite --prune=true --ignore=dist --ignore=assets/icon-square.png --ignore=assets/icon-concept.png --ignore=assets/icon-1024.png"
+  },
+  "dependencies": {
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/xterm": "^5.5.0"
+  },
+  "devDependencies": {
+    "@electron/packager": "^18.3.6",
+    "electron": "^33.0.0",
+    "jimp": "^1.6.0",
+    "png-to-ico": "^3.0.1"
+  }
+}

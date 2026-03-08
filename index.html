@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>npm-runner</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="node_modules/@xterm/xterm/css/xterm.css">
+</head>
+<body>
+  <header id="top-bar">
+    <button id="btn-open">Open package.json</button>
+    <span id="project-name">No project loaded</span>
+  </header>
+
+  <div id="app">
+    <aside id="sidebar">
+      <div id="sidebar-header">Scripts</div>
+      <ul id="script-list"></ul>
+    </aside>
+
+    <main id="main-area">
+      <div id="terminal-container">
+        <div id="empty-state">Open a package.json and click a script to run it.</div>
+      </div>
+    </main>
+  </div>
+
+  <script src="node_modules/@xterm/xterm/lib/xterm.js"></script>
+  <script src="node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
+  <script src="renderer.js"></script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+---
+description: Use bun as the package manager, not npm or yarn
+alwaysApply: true
+---
+
+# Package Manager: Bun
+
+This project uses **bun** as the package manager. Always use `bun` commands, never `npm` or `yarn`.
+
+```bash
+# ✅ GOOD
+bun install
+bun add <package>
+bun add -d <package>
+bun remove <package>
+bun run <script>
+
+# ❌ BAD
+npm install
+npm install <package>
+yarn add <package>
+```
+
+Lock file is `bun.lock` (not `package-lock.json`).
