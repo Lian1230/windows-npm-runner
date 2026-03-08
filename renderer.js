@@ -565,6 +565,14 @@ function createTerminalTab(name) {
     if (paneId) setFocusedPane(paneId);
   });
 
+  term.attachCustomKeyEventHandler((e) => {
+    if (e.ctrlKey && e.key === 'c' && term.hasSelection()) {
+      navigator.clipboard.writeText(term.getSelection());
+      return false;
+    }
+    return true;
+  });
+
   const termBox = wrapper.querySelector('.term-box');
   term.open(termBox);
 

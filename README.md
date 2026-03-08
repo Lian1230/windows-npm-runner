@@ -2,6 +2,8 @@
 
 A lightweight Windows desktop app for running multiple npm scripts simultaneously in a split-pane terminal layout — with working Stop and Re-run controls.
 
+![App Preview](./assets/preview.png)
+
 ---
 
 ## The Problem
@@ -40,10 +42,7 @@ bun run build
 
 Output is written to `dist/windows-npm-runner-win32-x64/`. Copy that folder anywhere and run `windows-npm-runner.exe` directly — no installation needed.
 
-> **Icon regeneration** (if you change `assets/icon.png`): run the one-off conversion script to rebuild `assets/icon.ico` before building:
-> ```bash
-> bun -e "const {default:p}=require('png-to-ico');const fs=require('fs');p('assets/icon.png').then(b=>fs.writeFileSync('assets/icon.ico',b));"
-> ```
+> **Icon update:** Replace `assets/icon.png` with your new image (any size/aspect ratio). The build automatically generates a multi-size `.ico` file from it via the `prebuild` step.
 
 ---
 

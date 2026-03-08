@@ -159,8 +159,11 @@ ipcMain.on('run-script', (event, { id, script, cwd }) => {
   const unixCwd = toUnixPath(cwd);
   const cmd = `cd "${unixCwd}" && npm run ${script}`;
 
+  const spawnEnv = { ...process.env, FORCE_COLOR: '3', COLORTERM: 'truecolor', TERM: 'xterm-256color' };
+  delete spawnEnv.NO_COLOR;
+
   const proc = spawn(BASH_PATH, ['--login', '-c', cmd], {
-    env: { ...process.env, FORCE_COLOR: '1', TERM: 'xterm-256color' },
+    env: spawnEnv,
     windowsHide: true,
   });
 
