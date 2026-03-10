@@ -8,6 +8,10 @@ function getSessionFile() {
   return path.join(app.getPath('userData'), 'last-session.json');
 }
 
+function getSettingsFile() {
+  return path.join(app.getPath('userData'), 'settings.json');
+}
+
 function saveLastPackagePath(filePath) {
   try {
     fs.writeFileSync(getSessionFile(), JSON.stringify({ filePath }), 'utf8');
@@ -21,6 +25,21 @@ function readLastPackagePath() {
   } catch {
     return null;
   }
+}
+
+function readSettings() {
+  try {
+    const raw = fs.readFileSync(getSettingsFile(), 'utf8');
+    return JSON.parse(raw);
+  } catch {
+    return { packageManager: 'npm' };
+  }
+}
+
+function saveSettings(settings) {
+  try {
+    fs.writeFileSync(getSettingsFile(), JSON.stringify(settings), 'utf8');
+  } catch { /* ignore */ }
 }
 
 function parsePackageJson(filePath) {
@@ -149,6 +168,27 @@ ipcMain.handle('load-last-session', () => {
   }
 });
 
+// Detect available package managers
+ipcMain.handle('detect-managers', async () => {
+  const managers = {};
+  for (const name of ['npm', 'pnpm', 'bun']) {
+    try {
+      const out = execSync(`where ${name}`, { encoding: 'utf8', timeout: 3000, windowsHide: true });
+      const firstLine = out.trim().split(/\r?\n/)[0].trim();
+      managers[name] = firstLine || null;
+    } catch {
+      managers[name] = null;
+    }
+  }
+  return managers;
+});
+
+// Settings
+ipcMain.handle('get-settings', () => readSettings());
+ipcMain.handle('save-settings', (_event, settings) => {
+  saveSettings(settings);
+});
+
 // Run a script
 ipcMain.on('run-script', (event, { id, script, cwd }) => {
   if (!BASH_PATH) {
@@ -156,8 +196,9 @@ ipcMain.on('run-script', (event, { id, script, cwd }) => {
     return;
   }
 
+  const { packageManager } = readSettings();
   const unixCwd = toUnixPath(cwd);
-  const cmd = `cd "${unixCwd}" && npm run ${script}`;
+  const cmd = `cd "${unixCwd}" && ${packageManager} run ${script}`;
 
   const spawnEnv = { ...process.env, FORCE_COLOR: '3', COLORTERM: 'truecolor', TERM: 'xterm-256color' };
   delete spawnEnv.NO_COLOR;

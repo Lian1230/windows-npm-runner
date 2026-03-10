@@ -12,6 +12,10 @@ contextBridge.exposeInMainWorld('api', {
     return ipcRenderer.invoke('stop-script', { id });
   },
 
+  detectManagers: () => ipcRenderer.invoke('detect-managers'),
+  getSettings: () => ipcRenderer.invoke('get-settings'),
+  saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
+
   onScriptOutput: (callback) => {
     ipcRenderer.on('script-output', (_event, data) => callback(data));
   },

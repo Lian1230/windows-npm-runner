@@ -1,6 +1,8 @@
 // --- State ---
 let projectDir = null;
 let scripts = {};
+let packageManager = 'npm';
+let detectedManagers = { npm: null, pnpm: null, bun: null };
 const tabs = new Map(); // id -> { script, term, fitAddon, wrapper, running, busy, paneId, tabEl }
 const panes = new Map();
 let rootNode = null;
@@ -25,6 +27,72 @@ const contextMenu = document.createElement('div');
 contextMenu.id = 'context-menu';
 contextMenu.hidden = true;
 document.body.appendChild(contextMenu);
+
+// --- Settings modal ---
+const btnSettings = document.getElementById('btn-settings');
+const settingsOverlay = document.createElement('div');
+settingsOverlay.id = 'settings-overlay';
+settingsOverlay.hidden = true;
+document.body.appendChild(settingsOverlay);
+
+function buildSettingsModal() {
+  const modal = document.createElement('div');
+  modal.id = 'settings-modal';
+
+  const title = document.createElement('div');
+  title.className = 'settings-title';
+  title.textContent = 'Settings';
+  modal.appendChild(title);
+
+  // Package Manager row
+  const row = document.createElement('div');
+  row.className = 'settings-row';
+
+  const label = document.createElement('span');
+  label.className = 'settings-row-label';
+  label.textContent = 'Package Manager';
+
+  const select = document.createElement('select');
+  select.className = 'settings-select';
+
+  for (const name of ['npm', 'pnpm', 'bun']) {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    opt.selected = name === packageManager;
+    if (!detectedManagers[name]) {
+      opt.disabled = true;
+      opt.textContent = `${name} (not found)`;
+    }
+    select.appendChild(opt);
+  }
+
+  select.addEventListener('change', async () => {
+    packageManager = select.value;
+    await api.saveSettings({ packageManager });
+  });
+
+  row.append(label, select);
+  modal.appendChild(row);
+
+  return modal;
+}
+
+async function openSettings() {
+  detectedManagers = await api.detectManagers();
+  settingsOverlay.replaceChildren(buildSettingsModal());
+  settingsOverlay.hidden = false;
+}
+
+function hideSettings() {
+  settingsOverlay.hidden = true;
+}
+
+settingsOverlay.addEventListener('mousedown', (event) => {
+  if (event.target === settingsOverlay) hideSettings();
+});
+
+btnSettings.addEventListener('click', openSettings);
 
 class PaneGroup {
   constructor() {
@@ -471,8 +539,32 @@ function renderScriptList() {
 
   for (const name of Object.keys(scripts)) {
     const li = document.createElement('li');
-    li.textContent = name;
+    li.className = 'script-item';
     li.title = scripts[name];
+
+    const icon = document.createElement('span');
+    icon.className = 'script-icon';
+    icon.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>`;
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'script-name';
+    nameSpan.textContent = name;
+
+    const actions = document.createElement('div');
+    actions.className = 'script-actions';
+
+    const playBtn = document.createElement('button');
+    playBtn.className = 'script-play-btn';
+    playBtn.title = 'Run Script';
+    playBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l9-5.5z"/></svg>`;
+    
+    playBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openScriptTab(name);
+    });
+
+    actions.appendChild(playBtn);
+    li.append(icon, nameSpan, actions);
 
     li.addEventListener('click', () => openScriptTab(name));
     li.addEventListener('contextmenu', (event) => {
@@ -673,7 +765,7 @@ function startScript(id) {
   updateTabStatus(id, 'running');
   updateTabButtons(id);
 
-  tab.term.writeln(`\x1b[90m$ npm run ${tab.script}\x1b[0m\r\n`);
+  tab.term.writeln(`\x1b[90m$ ${packageManager} run ${tab.script}\x1b[0m\r\n`);
   api.runScript(id, tab.script, projectDir);
 }
 
@@ -710,7 +802,7 @@ async function rerunScript(id) {
   }
 
   tab.term.clear();
-  tab.term.writeln(`\x1b[90m$ npm run ${tab.script}\x1b[0m\r\n`);
+  tab.term.writeln(`\x1b[90m$ ${packageManager} run ${tab.script}\x1b[0m\r\n`);
   tab.running = true;
   updateTabStatus(id, 'running');
   setBusy(id, rerunBtn, false);
@@ -759,7 +851,10 @@ document.addEventListener('mousedown', (event) => {
 
 window.addEventListener('blur', hideContextMenu);
 window.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape') hideContextMenu();
+  if (event.key === 'Escape') {
+    hideContextMenu();
+    hideSettings();
+  }
 });
 
 // --- IPC listeners ---
@@ -787,6 +882,10 @@ api.onScriptError(({ id, data }) => {
 // --- Auto-resume last session on startup ---
 (async () => {
   ensureRootPane();
+
+  const settings = await api.getSettings();
+  if (settings?.packageManager) packageManager = settings.packageManager;
+
   const result = await api.loadLastSession();
   if (!result || result.error) return;
   scripts = result.scripts;
