@@ -156,6 +156,18 @@ ipcMain.handle('open-package-json', async () => {
   }
 });
 
+// Open a specific package.json by path (for saved projects)
+ipcMain.handle('open-package-path', (_event, filePath) => {
+  if (!filePath || !fs.existsSync(filePath)) return { error: 'File not found.' };
+  try {
+    const result = parsePackageJson(filePath);
+    saveLastPackagePath(filePath);
+    return result;
+  } catch (err) {
+    return { error: err.message };
+  }
+});
+
 // Load the last session (called on app startup)
 ipcMain.handle('load-last-session', () => {
   const filePath = readLastPackagePath();
@@ -245,6 +257,12 @@ ipcMain.on('run-script', (event, { id, script, cwd }) => {
 // Stop a script (returns a promise that resolves when the process is dead)
 ipcMain.handle('stop-script', async (_event, { id }) => {
   await killProcess(id);
+});
+
+// Stop all running scripts
+ipcMain.handle('stop-all-scripts', async () => {
+  const ids = [...processes.keys()];
+  await Promise.all(ids.map((id) => killProcess(id)));
 });
 
 // --- Port detection from script output ---

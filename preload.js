@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('api', {
   openPackageJson: () => ipcRenderer.invoke('open-package-json'),
+  openPackagePath: (filePath) => ipcRenderer.invoke('open-package-path', filePath),
   loadLastSession: () => ipcRenderer.invoke('load-last-session'),
 
   runScript: (id, script, cwd) => {
@@ -10,6 +11,10 @@ contextBridge.exposeInMainWorld('api', {
 
   stopScript: (id) => {
     return ipcRenderer.invoke('stop-script', { id });
+  },
+
+  stopAllScripts: () => {
+    return ipcRenderer.invoke('stop-all-scripts');
   },
 
   detectManagers: () => ipcRenderer.invoke('detect-managers'),

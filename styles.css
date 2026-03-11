@@ -38,13 +38,19 @@ html, body {
   -webkit-app-region: drag;
 }
 
+.open-button-group {
+  -webkit-app-region: no-drag;
+  display: flex;
+  align-items: stretch;
+}
+
 #btn-open {
   -webkit-app-region: no-drag;
   padding: 6px 14px;
   background: var(--accent);
   color: var(--bg-overlay);
   border: none;
-  border-radius: 6px;
+  border-radius: 6px 0 0 6px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -55,11 +61,184 @@ html, body {
   opacity: 0.85;
 }
 
-#project-name {
+#project-info {
+  -webkit-app-region: no-drag;
   flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+#project-name {
   font-size: 13px;
   color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#btn-save-project {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.12s, color 0.12s;
+}
+
+#btn-save-project:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--yellow);
+}
+
+#btn-save-project.active {
+  color: var(--yellow);
+}
+
+#btn-save-project.active:hover {
+  background: rgba(249, 226, 175, 0.12);
+}
+
+#btn-saved-projects {
   -webkit-app-region: no-drag;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  padding: 0;
+  border: none;
+  border-left: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 0 6px 6px 0;
+  background: var(--accent);
+  color: var(--bg-overlay);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+
+#btn-saved-projects:hover {
+  opacity: 0.85;
+}
+
+#btn-saved-projects[hidden] {
+  display: none;
+}
+
+.open-button-group:not(:has(#btn-saved-projects:not([hidden]))) #btn-open {
+  border-radius: 6px;
+}
+
+#saved-projects-dropdown {
+  position: fixed;
+  min-width: 220px;
+  max-width: 340px;
+  padding: 6px;
+  background: var(--bg-overlay);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  z-index: 25;
+}
+
+#saved-projects-dropdown[hidden] {
+  display: none;
+}
+
+.saved-project-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.saved-project-name {
+  flex: 1;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.saved-project-name:hover {
+  background: rgba(137, 180, 250, 0.12);
+}
+
+.saved-project-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.12s, color 0.12s;
+}
+
+.saved-project-remove:hover {
+  background: rgba(243, 139, 168, 0.2);
+  color: var(--red);
+}
+
+.saved-projects-hint {
+  padding: 10px;
+  color: var(--text-dim);
+  font-size: 12px;
+  text-align: center;
+}
+
+#btn-stop-all {
+  -webkit-app-region: no-drag;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--red);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, opacity 0.12s;
+}
+
+#btn-stop-all:hover {
+  background: rgba(243, 139, 168, 0.15);
+}
+
+#btn-stop-all:disabled {
+  opacity: 0.4;
+  cursor: wait;
+}
+
+#btn-stop-all[hidden] {
+  display: none;
 }
 
 #btn-settings {
@@ -156,14 +335,10 @@ html, body {
 .script-actions {
   display: flex;
   align-items: center;
-  opacity: 0;
-  transition: opacity 0.12s;
+  gap: 2px;
 }
 
-#script-list li:hover .script-actions {
-  opacity: 1;
-}
-
+.script-bookmark-btn,
 .script-play-btn {
   display: flex;
   align-items: center;
@@ -173,8 +348,55 @@ html, body {
   border: none;
   border-radius: 4px;
   background: transparent;
-  color: var(--green);
   cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s, background 0.12s, color 0.12s;
+}
+
+#script-list li:hover .script-bookmark-btn,
+#script-list li:hover .script-play-btn {
+  opacity: 1;
+}
+
+.script-play-btn {
+  color: var(--green);
+}
+
+.script-play-btn:hover {
+  background: rgba(166, 227, 161, 0.15);
+}
+
+.script-bookmark-btn {
+  color: var(--text-dim);
+}
+
+.script-bookmark-btn:hover {
+  color: var(--yellow);
+  background: rgba(249, 226, 175, 0.12);
+}
+
+.script-bookmark-btn.active {
+  color: var(--yellow);
+}
+
+#script-list li.bookmarked {
+  border-left: 2px solid var(--yellow);
+  padding-left: 8px;
+}
+
+@keyframes bookmark-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+#script-list li.bookmark-animate {
+  animation: bookmark-slide-in 0.3s ease-out;
 }
 
 /* Main area */
@@ -401,6 +623,18 @@ html, body {
 .tab .tab-close:hover {
   background: rgba(243, 139, 168, 0.2);
   color: var(--red);
+}
+
+.tab.dragging {
+  opacity: 0.4;
+}
+
+.tab.drag-over-left {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.tab.drag-over-right {
+  box-shadow: inset -2px 0 0 var(--accent);
 }
 
 .pane-body {

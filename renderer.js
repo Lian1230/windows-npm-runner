@@ -3,6 +3,8 @@ let projectDir = null;
 let scripts = {};
 let packageManager = 'npm';
 let detectedManagers = { npm: null, pnpm: null, bun: null };
+let bookmarks = new Set();
+let savedProjects = []; // [{ name, filePath }]
 const tabs = new Map(); // id -> { script, term, fitAddon, wrapper, running, busy, paneId, tabEl }
 const panes = new Map();
 let rootNode = null;
@@ -18,6 +20,9 @@ const projectNameEl = document.getElementById('project-name');
 const scriptListEl = document.getElementById('script-list');
 const terminalContainer = document.getElementById('terminal-container');
 const emptyState = document.getElementById('empty-state');
+const btnSaveProject = document.getElementById('btn-save-project');
+const btnSavedProjects = document.getElementById('btn-saved-projects');
+const btnStopAll = document.getElementById('btn-stop-all');
 
 const paneRoot = document.createElement('div');
 paneRoot.id = 'pane-root';
@@ -69,7 +74,7 @@ function buildSettingsModal() {
 
   select.addEventListener('change', async () => {
     packageManager = select.value;
-    await api.saveSettings({ packageManager });
+    saveAllSettings();
   });
 
   row.append(label, select);
@@ -93,6 +98,165 @@ settingsOverlay.addEventListener('mousedown', (event) => {
 });
 
 btnSettings.addEventListener('click', openSettings);
+
+// --- Stop All ---
+function updateStopAllButton() {
+  const hasRunning = [...tabs.values()].some((t) => t.running);
+  btnStopAll.hidden = !hasRunning;
+}
+
+btnStopAll.addEventListener('click', async () => {
+  btnStopAll.disabled = true;
+  await api.stopAllScripts();
+
+  for (const [id, tab] of tabs) {
+    if (tab.running) {
+      tab.running = false;
+      tab.term.writeln('\r\n\x1b[33mProcess stopped.\x1b[0m');
+      updateTabStatus(id, 'exited-ok');
+      updateTabButtons(id);
+    }
+  }
+
+  btnStopAll.disabled = false;
+  updateStopAllButton();
+});
+
+// --- Saved projects dropdown ---
+const savedProjectsDropdown = document.createElement('div');
+savedProjectsDropdown.id = 'saved-projects-dropdown';
+savedProjectsDropdown.hidden = true;
+document.body.appendChild(savedProjectsDropdown);
+
+function saveAllSettings() {
+  api.saveSettings({ packageManager, bookmarks: [...bookmarks], savedProjects });
+}
+
+function normalizePath(p) {
+  return p.replace(/\\/g, '/').replace(/\/$/, '').toLowerCase();
+}
+
+function isCurrentProjectSaved() {
+  if (!projectDir) return false;
+  const norm = normalizePath(projectDir);
+  return savedProjects.some((p) => normalizePath(p.filePath) === norm);
+}
+
+function toggleSaveProject() {
+  if (!projectDir) return;
+  if (isCurrentProjectSaved()) {
+    const norm = normalizePath(projectDir);
+    savedProjects = savedProjects.filter((p) => normalizePath(p.filePath) !== norm);
+  } else {
+    savedProjects.push({ name: projectNameEl.textContent || projectDir, filePath: projectDir });
+  }
+  saveAllSettings();
+  updateProjectButtons();
+}
+
+function removeSavedProject(filePath) {
+  savedProjects = savedProjects.filter((p) => p.filePath !== filePath);
+  saveAllSettings();
+  updateProjectButtons();
+}
+
+async function openSavedProject(filePath) {
+  hideSavedProjectsDropdown();
+  const pkgPath = `${filePath.replace(/\\/g, '/').replace(/\/$/, '')}/package.json`;
+  const result = await api.openPackagePath(pkgPath);
+  if (!result) return;
+  if (result.error) {
+    alert(`Failed to open project:\n${result.error}`);
+    return;
+  }
+  scripts = result.scripts;
+  projectDir = result.projectDir;
+  projectNameEl.textContent = result.projectName;
+  updateProjectButtons();
+  renderScriptList();
+}
+
+function updateProjectButtons() {
+  const hasProject = !!projectDir;
+  const isSaved = isCurrentProjectSaved();
+
+  btnSaveProject.hidden = !hasProject;
+  btnSaveProject.classList.toggle('active', isSaved);
+  btnSaveProject.title = isSaved ? 'Remove from saved' : 'Save project';
+  btnSaveProject.innerHTML = `<svg width="14" height="14" viewBox="0 0 16 16" fill="${isSaved ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.5"><path d="M3 2h10v12l-5-3.5L3 14V2z"/></svg>`;
+
+  btnSavedProjects.hidden = savedProjects.length === 0;
+}
+
+function renderSavedProjectsDropdown() {
+  savedProjectsDropdown.replaceChildren();
+
+  if (savedProjects.length === 0) {
+    const hint = document.createElement('div');
+    hint.className = 'saved-projects-hint';
+    hint.textContent = 'No saved projects';
+    savedProjectsDropdown.appendChild(hint);
+    return;
+  }
+
+  for (const proj of savedProjects) {
+    const item = document.createElement('div');
+    item.className = 'saved-project-item';
+
+    const nameBtn = document.createElement('button');
+    nameBtn.className = 'saved-project-name';
+    nameBtn.textContent = proj.name;
+    nameBtn.title = proj.filePath;
+    nameBtn.addEventListener('click', () => openSavedProject(proj.filePath));
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'saved-project-remove';
+    removeBtn.title = 'Remove';
+    removeBtn.innerHTML = '&times;';
+    removeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      removeSavedProject(proj.filePath);
+      renderSavedProjectsDropdown();
+      if (savedProjects.length === 0) hideSavedProjectsDropdown();
+    });
+
+    item.append(nameBtn, removeBtn);
+    savedProjectsDropdown.appendChild(item);
+  }
+}
+
+function showSavedProjectsDropdown() {
+  renderSavedProjectsDropdown();
+  savedProjectsDropdown.hidden = false;
+
+  const rect = btnOpen.getBoundingClientRect();
+  savedProjectsDropdown.style.top = `${rect.bottom + 4}px`;
+  savedProjectsDropdown.style.left = `${rect.left}px`;
+}
+
+function hideSavedProjectsDropdown() {
+  savedProjectsDropdown.hidden = true;
+}
+
+btnSaveProject.addEventListener('click', (e) => {
+  e.stopPropagation();
+  toggleSaveProject();
+});
+
+btnSavedProjects.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (savedProjectsDropdown.hidden) {
+    showSavedProjectsDropdown();
+  } else {
+    hideSavedProjectsDropdown();
+  }
+});
+
+document.addEventListener('mousedown', (e) => {
+  if (!savedProjectsDropdown.hidden && !savedProjectsDropdown.contains(e.target) && e.target !== btnSavedProjects) {
+    hideSavedProjectsDropdown();
+  }
+});
 
 class PaneGroup {
   constructor() {
@@ -189,6 +353,7 @@ class PaneGroup {
     const tabEl = document.createElement('div');
     tabEl.className = 'tab';
     tabEl.dataset.id = id;
+    tabEl.draggable = true;
     tabEl.innerHTML = `
       <span class="status-dot idle"></span>
       <span class="tab-name">${name}</span>
@@ -202,6 +367,59 @@ class PaneGroup {
       }
 
       this.switchToTab(id);
+    });
+
+    tabEl.addEventListener('dragstart', (event) => {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', id);
+      tabEl.classList.add('dragging');
+      this._dragSourceId = id;
+    });
+
+    tabEl.addEventListener('dragend', () => {
+      tabEl.classList.remove('dragging');
+      this._dragSourceId = null;
+      for (const tab of this.tabBar.querySelectorAll('.tab')) {
+        tab.classList.remove('drag-over-left', 'drag-over-right');
+      }
+    });
+
+    tabEl.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+
+      // Show drop indicator on left or right half
+      const rect = tabEl.getBoundingClientRect();
+      const midX = rect.left + rect.width / 2;
+      const isLeft = event.clientX < midX;
+
+      for (const tab of this.tabBar.querySelectorAll('.tab')) {
+        tab.classList.remove('drag-over-left', 'drag-over-right');
+      }
+
+      if (tabEl.dataset.id !== this._dragSourceId) {
+        tabEl.classList.add(isLeft ? 'drag-over-left' : 'drag-over-right');
+      }
+    });
+
+    tabEl.addEventListener('dragleave', () => {
+      tabEl.classList.remove('drag-over-left', 'drag-over-right');
+    });
+
+    tabEl.addEventListener('drop', (event) => {
+      event.preventDefault();
+      const draggedId = event.dataTransfer.getData('text/plain');
+      if (!draggedId || draggedId === id) return;
+
+      const rect = tabEl.getBoundingClientRect();
+      const midX = rect.left + rect.width / 2;
+      const insertBefore = event.clientX < midX;
+
+      this.reorderTab(draggedId, id, insertBefore);
+
+      for (const tab of this.tabBar.querySelectorAll('.tab')) {
+        tab.classList.remove('drag-over-left', 'drag-over-right');
+      }
     });
 
     tabEl.addEventListener('contextmenu', (event) => {
@@ -226,6 +444,33 @@ class PaneGroup {
     });
 
     return tabEl;
+  }
+
+  reorderTab(draggedId, targetId, insertBefore) {
+    if (draggedId === targetId) return;
+
+    const entries = [...this.tabs.entries()];
+    const draggedIndex = entries.findIndex(([id]) => id === draggedId);
+    const targetIndex = entries.findIndex(([id]) => id === targetId);
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    const [draggedEntry] = entries.splice(draggedIndex, 1);
+    const newTargetIndex = entries.findIndex(([id]) => id === targetId);
+    const insertIndex = insertBefore ? newTargetIndex : newTargetIndex + 1;
+    entries.splice(insertIndex, 0, draggedEntry);
+
+    this.tabs = new Map(entries);
+
+    // Rebuild tab bar DOM order
+    const draggedTabEl = this.tabBar.querySelector(`.tab[data-id="${draggedId}"]`);
+    const targetTabEl = this.tabBar.querySelector(`.tab[data-id="${targetId}"]`);
+    if (draggedTabEl && targetTabEl) {
+      if (insertBefore) {
+        this.tabBar.insertBefore(draggedTabEl, targetTabEl);
+      } else {
+        this.tabBar.insertBefore(draggedTabEl, targetTabEl.nextSibling);
+      }
+    }
   }
 
   addTab(id, tab) {
@@ -534,13 +779,31 @@ function scheduleFitVisibleTerminals() {
   });
 }
 
-function renderScriptList() {
+function toggleBookmark(name) {
+  if (bookmarks.has(name)) {
+    bookmarks.delete(name);
+  } else {
+    bookmarks.add(name);
+  }
+  saveAllSettings();
+  renderScriptList(name);
+}
+
+function renderScriptList(animateScript) {
+  const scriptNames = Object.keys(scripts);
+  const sorted = [
+    ...scriptNames.filter((n) => bookmarks.has(n)),
+    ...scriptNames.filter((n) => !bookmarks.has(n)),
+  ];
+
   scriptListEl.innerHTML = '';
 
-  for (const name of Object.keys(scripts)) {
+  for (const name of sorted) {
     const li = document.createElement('li');
     li.className = 'script-item';
     li.title = scripts[name];
+    if (bookmarks.has(name)) li.classList.add('bookmarked');
+    if (animateScript === name) li.classList.add('bookmark-animate');
 
     const icon = document.createElement('span');
     icon.className = 'script-icon';
@@ -553,20 +816,30 @@ function renderScriptList() {
     const actions = document.createElement('div');
     actions.className = 'script-actions';
 
+    const bookmarkBtn = document.createElement('button');
+    bookmarkBtn.className = 'script-bookmark-btn';
+    if (bookmarks.has(name)) bookmarkBtn.classList.add('active');
+    bookmarkBtn.title = bookmarks.has(name) ? 'Remove bookmark' : 'Bookmark';
+    bookmarkBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="${bookmarks.has(name) ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.5"><path d="M3 2h10v12l-5-3.5L3 14V2z"/></svg>`;
+
+    bookmarkBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleBookmark(name);
+    });
+
     const playBtn = document.createElement('button');
     playBtn.className = 'script-play-btn';
     playBtn.title = 'Run Script';
     playBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l9-5.5z"/></svg>`;
-    
+
     playBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       openScriptTab(name);
     });
 
-    actions.appendChild(playBtn);
+    actions.append(bookmarkBtn, playBtn);
     li.append(icon, nameSpan, actions);
 
-    li.addEventListener('click', () => openScriptTab(name));
     li.addEventListener('contextmenu', (event) => {
       event.preventDefault();
       showContextMenu(event.clientX, event.clientY, [
@@ -767,6 +1040,7 @@ function startScript(id) {
 
   tab.term.writeln(`\x1b[90m$ ${packageManager} run ${tab.script}\x1b[0m\r\n`);
   api.runScript(id, tab.script, projectDir);
+  updateStopAllButton();
 }
 
 async function stopScript(id) {
@@ -786,6 +1060,7 @@ async function stopScript(id) {
   updateTabStatus(id, 'exited-ok');
 
   setBusy(id, stopBtn, false);
+  updateStopAllButton();
 }
 
 async function rerunScript(id) {
@@ -840,6 +1115,7 @@ btnOpen.addEventListener('click', async () => {
   scripts = result.scripts;
   projectDir = result.projectDir;
   projectNameEl.textContent = result.projectName;
+  updateProjectButtons();
   renderScriptList();
 });
 
@@ -872,6 +1148,7 @@ api.onScriptExit(({ id, code }) => {
   tab.term.writeln(`\r\n${label}Process exited with code ${code}\x1b[0m`);
   updateTabStatus(id, code === 0 ? 'exited-ok' : 'exited-fail');
   updateTabButtons(id);
+  updateStopAllButton();
 });
 
 api.onScriptError(({ id, data }) => {
@@ -885,12 +1162,18 @@ api.onScriptError(({ id, data }) => {
 
   const settings = await api.getSettings();
   if (settings?.packageManager) packageManager = settings.packageManager;
+  if (settings?.bookmarks) bookmarks = new Set(settings.bookmarks);
+  if (settings?.savedProjects) savedProjects = settings.savedProjects;
 
   const result = await api.loadLastSession();
-  if (!result || result.error) return;
+  if (!result || result.error) {
+    updateProjectButtons();
+    return;
+  }
   scripts = result.scripts;
   projectDir = result.projectDir;
   projectNameEl.textContent = result.projectName;
+  updateProjectButtons();
   renderScriptList();
 })();
 
