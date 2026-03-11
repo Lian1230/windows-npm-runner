@@ -637,6 +637,59 @@ html, body {
   box-shadow: inset -2px 0 0 var(--accent);
 }
 
+.pane-tab-bar.drag-over-bar {
+  background: rgba(137, 180, 250, 0.08);
+}
+
+/* Drop zone overlay for drag-and-drop splitting */
+.drop-zone-overlay {
+  position: absolute;
+  inset: 0;
+  display: none;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.drop-zone-overlay.visible {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  pointer-events: auto;
+}
+
+.drop-zone {
+  border-radius: 6px;
+  border: 2px dashed transparent;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.drop-zone.active {
+  background: rgba(137, 180, 250, 0.12);
+  border-color: rgba(137, 180, 250, 0.4);
+}
+
+.drop-left {
+  grid-column: 1;
+  grid-row: 1 / -1;
+}
+
+.drop-right {
+  grid-column: 2;
+  grid-row: 1 / -1;
+}
+
+.drop-top {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.drop-bottom {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
 .pane-body {
   position: relative;
   flex: 1;

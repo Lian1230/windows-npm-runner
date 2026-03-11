@@ -13,6 +13,8 @@ let paneCounter = 0;
 let splitCounter = 0;
 let tabCounter = 0;
 let fitScheduled = false;
+let draggedTabId = null;
+let draggedSourcePaneId = null;
 
 // --- DOM refs ---
 const btnOpen = document.getElementById('btn-open');
@@ -278,19 +280,6 @@ class PaneGroup {
     this.actions = document.createElement('div');
     this.actions.className = 'pane-actions';
 
-    this.splitRightBtn = createPaneActionButton('Split right', `
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
-        <rect x="2.5" y="2.5" width="11" height="11" rx="1.5"></rect>
-        <path d="M8 2.5v11"></path>
-      </svg>
-    `);
-    this.splitDownBtn = createPaneActionButton('Split down', `
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
-        <rect x="2.5" y="2.5" width="11" height="11" rx="1.5"></rect>
-        <path d="M2.5 8h11"></path>
-      </svg>
-    `);
-
     this.closePaneBtn = createPaneActionButton('Close pane', `
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
         <path d="M4 4l8 8"/><path d="M12 4l-8 8"/>
@@ -298,8 +287,38 @@ class PaneGroup {
     `);
     this.closePaneBtn.classList.add('btn-close-pane');
 
-    this.actions.append(this.splitRightBtn, this.splitDownBtn, this.closePaneBtn);
+    this.actions.append(this.closePaneBtn);
     this.header.append(this.tabBar, this.actions);
+
+    // Tab bar as drop target (for dropping on empty area)
+    this.tabBar.addEventListener('dragover', (event) => {
+      if (!draggedTabId) return;
+      if (event.target.closest('.tab')) return; // Let tab handle it
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+      this.dropOverlay.classList.remove('visible');
+      this._activeDropZone = null;
+      this.tabBar.classList.add('drag-over-bar');
+    });
+
+    this.tabBar.addEventListener('dragleave', (event) => {
+      if (!this.tabBar.contains(event.relatedTarget)) {
+        this.tabBar.classList.remove('drag-over-bar');
+      }
+    });
+
+    this.tabBar.addEventListener('drop', (event) => {
+      this.tabBar.classList.remove('drag-over-bar');
+      if (!draggedTabId) return;
+      if (event.target.closest('.tab')) return; // Let tab handle it
+      event.preventDefault();
+
+      const srcTab = tabs.get(draggedTabId);
+      if (srcTab && srcTab.paneId !== this.id) {
+        moveTabToPane(draggedTabId, this);
+      }
+      // If same pane, dropping on empty area does nothing
+    });
 
     this.body = document.createElement('div');
     this.body.className = 'pane-body';
@@ -309,24 +328,127 @@ class PaneGroup {
     this.emptyHint.textContent = 'This pane is empty.';
     this.body.appendChild(this.emptyHint);
 
+    // Drop zone overlay for drag-and-drop splitting
+    this.dropOverlay = document.createElement('div');
+    this.dropOverlay.className = 'drop-zone-overlay';
+    this.dropOverlay.innerHTML = `
+      <div class="drop-zone drop-left" data-zone="left"></div>
+      <div class="drop-zone drop-right" data-zone="right"></div>
+      <div class="drop-zone drop-top" data-zone="top"></div>
+      <div class="drop-zone drop-bottom" data-zone="bottom"></div>
+    `;
+    this.body.appendChild(this.dropOverlay);
+
+    this._activeDropZone = null;
+
+    this.el.addEventListener('dragover', (event) => {
+      if (!draggedTabId) return;
+      // Don't show drop zones if dragging the only tab in this pane onto itself
+      if (draggedSourcePaneId === this.id && this.tabs.size <= 1) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+
+      this.dropOverlay.classList.add('visible');
+      const rect = this.body.getBoundingClientRect();
+      const zone = getDropZone(event, rect);
+
+      if (zone !== this._activeDropZone) {
+        for (const el of this.dropOverlay.querySelectorAll('.drop-zone')) {
+          el.classList.toggle('active', el.dataset.zone === zone);
+        }
+        this._activeDropZone = zone;
+      }
+    });
+
+    this.el.addEventListener('dragleave', (event) => {
+      if (!this.el.contains(event.relatedTarget)) {
+        this.dropOverlay.classList.remove('visible');
+        this._activeDropZone = null;
+        for (const el of this.dropOverlay.querySelectorAll('.drop-zone')) {
+          el.classList.remove('active');
+        }
+      }
+    });
+
+    this.el.addEventListener('drop', (event) => {
+      this.dropOverlay.classList.remove('visible');
+      const zone = this._activeDropZone;
+      this._activeDropZone = null;
+      for (const el of this.dropOverlay.querySelectorAll('.drop-zone')) {
+        el.classList.remove('active');
+      }
+
+      if (!draggedTabId || !zone) return;
+      // Already handled by tab element or tab bar drop handlers
+      if (event.defaultPrevented) return;
+      event.preventDefault();
+
+      const tabId = draggedTabId;
+      const sourcePaneId = draggedSourcePaneId;
+
+      const direction = (zone === 'left' || zone === 'right') ? 'horizontal' : 'vertical';
+      const putFirst = (zone === 'left' || zone === 'top');
+
+      // Split this pane and move the tab into the new pane
+      const tab = tabs.get(tabId);
+      const sourcePane = tab ? panes.get(tab.paneId) : null;
+
+      // Preserve status dot before removing old tab element
+      const statusClass = getTabStatusClass(tab);
+
+      // If dragging within same pane, we need to handle it specially
+      if (sourcePaneId === this.id) {
+        // Remove tab from this pane first (without collapsing)
+        if (sourcePane) {
+          sourcePane.tabs.delete(tabId);
+          if (tab.tabEl) tab.tabEl.remove();
+          tab.wrapper.remove();
+          if (sourcePane.activeTabId === tabId) {
+            const nextActive = [...sourcePane.tabs.keys()].pop() || null;
+            sourcePane.activeTabId = null;
+            if (nextActive) sourcePane.switchToTab(nextActive);
+          }
+          sourcePane.render();
+        }
+      }
+
+      const newPane = splitPane(this, direction);
+
+      if (putFirst) {
+        // Swap children so newPane is first
+        const parent = this.parent;
+        if (parent instanceof SplitContainer) {
+          parent.children = [parent.children[1], parent.children[0]];
+          renderLayout();
+        }
+      }
+
+      if (sourcePaneId === this.id) {
+        // Tab was already removed from source, add directly
+        tab.paneId = newPane.id;
+        tab.wrapper.dataset.paneId = newPane.id;
+        tab.tabEl = newPane.createTabElement(tabId, tab.script);
+        const dot = tab.tabEl.querySelector('.status-dot');
+        if (dot) dot.className = `status-dot ${statusClass}`;
+        newPane.tabs.set(tabId, tab);
+        newPane.tabBar.appendChild(tab.tabEl);
+        newPane.body.appendChild(tab.wrapper);
+        newPane.switchToTab(tabId);
+        updateEmptyState();
+        scheduleFitVisibleTerminals();
+      } else {
+        moveTabToPane(tabId, newPane);
+      }
+
+      setFocusedPane(newPane.id);
+    });
+
     this.el.append(this.header, this.body);
 
     const focusPane = () => setFocusedPane(this.id);
 
     this.el.addEventListener('mousedown', focusPane);
     this.body.addEventListener('mousedown', focusPane);
-
-    this.splitRightBtn.addEventListener('click', (event) => {
-      event.stopPropagation();
-      const newPane = splitPane(this, 'horizontal');
-      setFocusedPane(newPane.id);
-    });
-
-    this.splitDownBtn.addEventListener('click', (event) => {
-      event.stopPropagation();
-      const newPane = splitPane(this, 'vertical');
-      setFocusedPane(newPane.id);
-    });
 
     this.closePaneBtn.addEventListener('click', (event) => {
       event.stopPropagation();
@@ -374,19 +496,36 @@ class PaneGroup {
       event.dataTransfer.setData('text/plain', id);
       tabEl.classList.add('dragging');
       this._dragSourceId = id;
+      draggedTabId = id;
+      draggedSourcePaneId = this.id;
     });
 
     tabEl.addEventListener('dragend', () => {
       tabEl.classList.remove('dragging');
       this._dragSourceId = null;
+      draggedTabId = null;
+      draggedSourcePaneId = null;
       for (const tab of this.tabBar.querySelectorAll('.tab')) {
         tab.classList.remove('drag-over-left', 'drag-over-right');
+      }
+      // Clean up all drop overlays
+      for (const pane of panes.values()) {
+        pane.dropOverlay.classList.remove('visible');
+        pane._activeDropZone = null;
+        for (const el of pane.dropOverlay.querySelectorAll('.drop-zone')) {
+          el.classList.remove('active');
+        }
       }
     });
 
     tabEl.addEventListener('dragover', (event) => {
+      if (!draggedTabId) return;
       event.preventDefault();
       event.dataTransfer.dropEffect = 'move';
+
+      // Hide body drop overlay since we're on the tab bar
+      this.dropOverlay.classList.remove('visible');
+      this._activeDropZone = null;
 
       // Show drop indicator on left or right half
       const rect = tabEl.getBoundingClientRect();
@@ -397,7 +536,7 @@ class PaneGroup {
         tab.classList.remove('drag-over-left', 'drag-over-right');
       }
 
-      if (tabEl.dataset.id !== this._dragSourceId) {
+      if (tabEl.dataset.id !== draggedTabId) {
         tabEl.classList.add(isLeft ? 'drag-over-left' : 'drag-over-right');
       }
     });
@@ -408,14 +547,25 @@ class PaneGroup {
 
     tabEl.addEventListener('drop', (event) => {
       event.preventDefault();
-      const draggedId = event.dataTransfer.getData('text/plain');
-      if (!draggedId || draggedId === id) return;
+      const srcId = draggedTabId || event.dataTransfer.getData('text/plain');
+      if (!srcId || srcId === id) return;
 
       const rect = tabEl.getBoundingClientRect();
       const midX = rect.left + rect.width / 2;
       const insertBefore = event.clientX < midX;
 
-      this.reorderTab(draggedId, id, insertBefore);
+      const srcTab = tabs.get(srcId);
+      if (srcTab && srcTab.paneId !== this.id) {
+        // Cross-pane: move tab to this pane at the drop position
+        moveTabToPane(srcId, this, insertBefore ? id : null);
+        if (!insertBefore) {
+          // Insert after the target tab
+          this.reorderTab(srcId, id, false);
+        }
+      } else {
+        // Same pane: reorder
+        this.reorderTab(srcId, id, insertBefore);
+      }
 
       for (const tab of this.tabBar.querySelectorAll('.tab')) {
         tab.classList.remove('drag-over-left', 'drag-over-right');
@@ -695,6 +845,98 @@ function collapsePaneIfPossible(pane) {
   renderLayout();
   const nextPane = findFirstPane(sibling);
   if (nextPane) setFocusedPane(nextPane.id);
+}
+
+function getTabStatusClass(tab) {
+  if (!tab?.tabEl) return 'idle';
+  const dot = tab.tabEl.querySelector('.status-dot');
+  if (!dot) return 'idle';
+  for (const cls of dot.classList) {
+    if (cls !== 'status-dot') return cls;
+  }
+  return 'idle';
+}
+
+function moveTabToPane(tabId, targetPane, insertBeforeTabId) {
+  const tab = tabs.get(tabId);
+  if (!tab) return;
+
+  const sourcePane = panes.get(tab.paneId);
+  if (!sourcePane || sourcePane === targetPane) {
+    // Same pane — just reorder if needed
+    if (insertBeforeTabId && sourcePane) {
+      sourcePane.reorderTab(tabId, insertBeforeTabId, true);
+    }
+    return;
+  }
+
+  // Preserve status dot state before removing old tab element
+  const statusClass = getTabStatusClass(tab);
+
+  // Remove from source pane without disposing the terminal
+  sourcePane.tabs.delete(tabId);
+  if (tab.tabEl) tab.tabEl.remove();
+  tab.wrapper.remove();
+
+  if (sourcePane.activeTabId === tabId) {
+    const nextActive = [...sourcePane.tabs.keys()].pop() || null;
+    sourcePane.activeTabId = null;
+    if (nextActive) sourcePane.switchToTab(nextActive);
+  }
+  sourcePane.render();
+
+  // Add to target pane
+  tab.paneId = targetPane.id;
+  tab.wrapper.dataset.paneId = targetPane.id;
+  tab.tabEl = targetPane.createTabElement(tabId, tab.script);
+  // Restore status dot state
+  const dot = tab.tabEl.querySelector('.status-dot');
+  if (dot) dot.className = `status-dot ${statusClass}`;
+
+  if (insertBeforeTabId) {
+    // Insert before a specific tab
+    const entries = [...targetPane.tabs.entries()];
+    const targetIndex = entries.findIndex(([id]) => id === insertBeforeTabId);
+    if (targetIndex !== -1) {
+      entries.splice(targetIndex, 0, [tabId, tab]);
+      targetPane.tabs = new Map(entries);
+      const targetTabEl = targetPane.tabBar.querySelector(`.tab[data-id="${insertBeforeTabId}"]`);
+      if (targetTabEl) {
+        targetPane.tabBar.insertBefore(tab.tabEl, targetTabEl);
+      } else {
+        targetPane.tabBar.appendChild(tab.tabEl);
+      }
+    } else {
+      targetPane.tabs.set(tabId, tab);
+      targetPane.tabBar.appendChild(tab.tabEl);
+    }
+  } else {
+    targetPane.tabs.set(tabId, tab);
+    targetPane.tabBar.appendChild(tab.tabEl);
+  }
+
+  targetPane.body.appendChild(tab.wrapper);
+  targetPane.switchToTab(tabId);
+  updateEmptyState();
+
+  // Collapse source pane if empty
+  collapsePaneIfPossible(sourcePane);
+  scheduleFitVisibleTerminals();
+}
+
+function getDropZone(event, rect) {
+  const x = (event.clientX - rect.left) / rect.width;
+  const y = (event.clientY - rect.top) / rect.height;
+
+  // Determine closest edge if within the edge threshold
+  const edges = [
+    { zone: 'left', dist: x },
+    { zone: 'right', dist: 1 - x },
+    { zone: 'top', dist: y },
+    { zone: 'bottom', dist: 1 - y },
+  ];
+  const closest = edges.reduce((a, b) => (a.dist < b.dist ? a : b));
+  return closest.zone;
 }
 
 function showContextMenu(x, y, items) {
