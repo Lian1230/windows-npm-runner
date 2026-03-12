@@ -107,7 +107,12 @@ app.whenReady().then(() => {
     },
   });
 
-  mainWindow.loadFile('index.html');
+  const isDev = process.argv.includes('--dev');
+  if (isDev) {
+    mainWindow.loadURL('http://localhost:5173');
+  } else {
+    mainWindow.loadFile(path.join(__dirname, 'dist-renderer', 'index.html'));
+  }
   mainWindow.setMenuBarVisibility(false);
 });
 

@@ -5,11 +5,13 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dev": "electron . --dev",
+    "dev:renderer": "vite",
+    "dev": "concurrently -k -n VITE,ELECTRON -c cyan,yellow \"bun run dev:renderer\" \"wait-on http://localhost:5173 && electron . --dev\"",
     "build:css": "tailwindcss -i tailwind-src.css -o tailwind.css",
     "tailwind:watch": "tailwindcss -i tailwind-src.css -o tailwind.css --watch",
+    "build:renderer": "vite build",
     "prebuild": "node scripts/build-icon.js",
-    "build": "bun run build:css && electron-packager . windows-npm-runner --platform=win32 --arch=x64 --icon=assets/icon.ico --out=dist --overwrite --prune=true --ignore=dist --ignore=scripts --ignore=assets/icon-square.png --ignore=assets/icon-concept.png --ignore=assets/icon-1024.png"
+    "build": "bun run build:renderer && electron-packager . windows-npm-runner --platform=win32 --arch=x64 --icon=assets/icon.ico --out=dist --overwrite --prune=true --ignore=dist --ignore=dist-renderer --ignore=src --ignore=scripts --ignore=assets/icon-square.png --ignore=assets/icon-concept.png --ignore=assets/icon-1024.png"
   },
   "dependencies": {
     "@xterm/addon-fit": "^0.10.0",
@@ -17,10 +19,15 @@
   },
   "devDependencies": {
     "@electron/packager": "^18.3.6",
+    "@sveltejs/vite-plugin-svelte": "^6.2.4",
     "@tailwindcss/cli": "^4.2.1",
+    "concurrently": "^9.2.1",
     "electron": "^33.0.0",
     "png-to-ico": "^3.0.1",
     "sharp": "^0.34.5",
-    "tailwindcss": "^4.2.1"
+    "svelte": "^5.53.10",
+    "tailwindcss": "^4.2.1",
+    "vite": "^7.3.1",
+    "wait-on": "^9.0.4"
   }
 }

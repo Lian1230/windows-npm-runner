@@ -5,54 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>npm-runner</title>
   <link rel="stylesheet" href="tailwind.css">
-  <link rel="stylesheet" href="node_modules/@xterm/xterm/css/xterm.css">
+  <link rel="stylesheet" href="/node_modules/@xterm/xterm/css/xterm.css">
 </head>
 <body class="antialiased h-full bg-base text-[#cdd6f4] font-sans text-sm overflow-hidden select-none">
-  <header id="top-bar" class="flex items-center gap-3 px-4 py-2 bg-overlay border-b border-border [-webkit-app-region:drag]">
-    <div class="open-button-group flex items-stretch [-webkit-app-region:no-drag]">
-      <button id="btn-open" type="button" class="px-3.5 py-1.5 bg-accent text-overlay border-0 rounded-l-md text-[13px] font-semibold cursor-pointer transition-opacity duration-150 hover:opacity-[0.85] [-webkit-app-region:no-drag]">Open</button>
-      <button id="btn-saved-projects" type="button" title="Saved projects" class="flex items-center justify-center w-7 p-0 border-0 rounded-r-md bg-accent text-overlay cursor-pointer transition-opacity duration-150 hover:opacity-[0.85] border-l border-black/20 [-webkit-app-region:no-drag] shrink-0" hidden>
-        <svg width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M1 1l4 4 4-4"/>
-        </svg>
-      </button>
-    </div>
-    <div id="project-info" class="flex-1 flex items-center gap-1.5 min-w-0 [-webkit-app-region:no-drag]">
-      <span id="project-name" class="text-[13px] text-muted truncate">No project loaded</span>
-      <button id="btn-save-project" type="button" title="Save project" class="flex items-center justify-center w-[26px] h-[26px] p-0 border-0 rounded-md bg-transparent text-muted cursor-pointer shrink-0 transition-colors duration-[0.12s] hover:bg-white/10 hover:text-yellow" hidden>
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2h10v12l-5-3.5L3 14V2z"/></svg>
-      </button>
-    </div>
-    <button id="btn-stop-all" type="button" title="Stop all" class="flex items-center justify-center w-8 h-8 border-0 rounded-md bg-transparent text-red cursor-pointer transition-colors duration-[0.12s] hover:bg-red/15 disabled:opacity-40 disabled:cursor-wait [-webkit-app-region:no-drag]" hidden>
-      <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor">
-        <rect x="2.5" y="2.5" width="11" height="11" rx="2"/>
-      </svg>
-    </button>
-    <button id="btn-settings" type="button" title="Settings" class="flex items-center justify-center w-8 h-8 border-0 rounded-md bg-transparent text-muted cursor-pointer transition-colors duration-[0.12s] hover:bg-white/10 hover:text-[#cdd6f4] [-webkit-app-region:no-drag]">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
-        <circle cx="12" cy="12" r="3"/>
-      </svg>
-    </button>
-  </header>
-
-  <div id="app" class="flex h-[calc(100vh-41px)]">
-    <aside id="sidebar" class="w-[220px] min-w-[180px] max-w-[50%] shrink-0 bg-surface border-r border-border flex flex-col overflow-hidden">
-      <div id="sidebar-header" class="pt-3 px-4 pb-2 text-[11px] font-bold uppercase tracking-wider text-muted">Scripts</div>
-      <ul id="script-list" class="list-none overflow-y-auto flex-1 py-1 px-2"></ul>
-    </aside>
-    <div id="sidebar-resize-handle" class="w-1.5 shrink-0 cursor-col-resize bg-transparent transition-colors duration-[0.12s] hover:bg-accent/20 relative" title="Drag to resize sidebar">
-      <div class="absolute left-0.5 top-0 bottom-0 w-0.5 bg-border pointer-events-none"></div>
-    </div>
-    <main id="main-area" class="flex-1 flex flex-col min-w-0">
-      <div id="terminal-container" class="flex-1 relative bg-base min-h-0">
-        <div id="empty-state" class="absolute inset-0 flex items-center justify-center text-muted text-sm pointer-events-none z-[3]">Open a package.json and click a script to run it.</div>
-      </div>
-    </main>
-  </div>
-
-  <script src="node_modules/@xterm/xterm/lib/xterm.js"></script>
-  <script src="node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
-  <script src="renderer.js"></script>
+  <div id="svelte-root"></div>
+  <script type="module" src="/src/main.js"></script>
 </body>
 </html>

@@ -2,6 +2,7 @@
 
 @source "./index.html";
 @source "./renderer.js";
+@source "./src/**/*.{svelte,js}";
 
 /* --- Theme (Catppuccin-inspired) --- */
 @theme {
