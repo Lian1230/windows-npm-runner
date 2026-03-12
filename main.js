@@ -89,6 +89,29 @@ function findGitBash() {
 
 const BASH_PATH = findGitBash();
 
+// --- Windows: package manager detection ---
+function detectManagersWin() {
+  const managers = {};
+  for (const name of ['npm', 'pnpm', 'bun']) {
+    try {
+      const out = execSync(`where ${name}`, { encoding: 'utf8', timeout: 3000, windowsHide: true });
+      const firstLine = out.trim().split(/\r?\n/)[0].trim();
+      managers[name] = firstLine || null;
+    } catch {
+      managers[name] = null;
+    }
+  }
+  return managers;
+}
+
+// --- Windows: run script in Git Bash ---
+function spawnScriptWin(cmd, spawnEnv) {
+  return spawn(BASH_PATH, ['--login', '-c', cmd], {
+    env: spawnEnv,
+    windowsHide: true,
+  });
+}
+
 // --- Window path to Unix path ---
 function toUnixPath(winPath) {
   // F:\Git\Project -> /f/Git/Project
@@ -119,16 +142,31 @@ function toScriptPath(cwd) {
 
 function detectManagersMac() {
   const managers = {};
+  const shell = getMacShell();
+  // Use login shell so PATH includes ~/.zshrc, ~/.bash_profile, nvm, fnm, Homebrew, etc.
   for (const name of ['npm', 'pnpm', 'bun']) {
     try {
-      const out = execSync('which ' + name, { encoding: 'utf8', timeout: 3000 });
+      const out = execSync(`${shell} -l -c 'which ${name}'`, {
+        encoding: 'utf8',
+        timeout: 5000,
+        env: { ...process.env, TERM: 'dumb' },
+      });
       const firstLine = out.trim().split(/\r?\n/)[0].trim();
-      managers[name] = firstLine || null;
+      managers[name] = firstLine && firstLine.length > 0 ? firstLine : null;
     } catch {
       managers[name] = null;
     }
   }
   return managers;
+}
+
+// --- macOS: run script in login shell ---
+function spawnScriptMac(cmd, spawnEnv) {
+  const shell = getMacShell();
+  return spawn(shell, ['-l', '-c', cmd], {
+    env: spawnEnv,
+    detached: true,
+  });
 }
 
 function getListeningPidsOnPortMac(port) {
@@ -281,19 +319,7 @@ ipcMain.handle('load-last-session', () => {
 
 // Detect available package managers
 ipcMain.handle('detect-managers', async () => {
-  if (isWin) {
-    const managers = {};
-    for (const name of ['npm', 'pnpm', 'bun']) {
-      try {
-        const out = execSync(`where ${name}`, { encoding: 'utf8', timeout: 3000, windowsHide: true });
-        const firstLine = out.trim().split(/\r?\n/)[0].trim();
-        managers[name] = firstLine || null;
-      } catch {
-        managers[name] = null;
-      }
-    }
-    return managers;
-  }
+  if (isWin) return detectManagersWin();
   if (isMac) return detectManagersMac();
   return { npm: null, pnpm: null, bun: null };
 });
@@ -323,19 +349,7 @@ ipcMain.on('run-script', (event, { id, script, cwd }) => {
   const spawnEnv = { ...process.env, FORCE_COLOR: '3', COLORTERM: 'truecolor', TERM: 'xterm-256color' };
   delete spawnEnv.NO_COLOR;
 
-  let proc;
-  if (isWin) {
-    proc = spawn(BASH_PATH, ['--login', '-c', cmd], {
-      env: spawnEnv,
-      windowsHide: true,
-    });
-  } else {
-    const shell = getMacShell();
-    proc = spawn(shell, ['-c', cmd], {
-      env: spawnEnv,
-      detached: true,
-    });
-  }
+  const proc = isWin ? spawnScriptWin(cmd, spawnEnv) : spawnScriptMac(cmd, spawnEnv);
 
   const entry = { proc, script, cwd, detectedPorts: new Set() };
   processes.set(id, entry);
