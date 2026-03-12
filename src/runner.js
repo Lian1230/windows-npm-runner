@@ -82,22 +82,27 @@ function moveTabToPane(tabId, targetPaneId, insertBeforeTabId) {
 
   const statusClass = tabsState.tabs[tabId]?.status ?? 'idle';
   const srcOrder = tabsState.orderByPane[sourcePaneId] || [];
-  const srcIdx = srcOrder.indexOf(tabId);
-  if (srcIdx !== -1) srcOrder.splice(srcIdx, 1);
+  const newSrcOrder = srcOrder.filter((id) => id !== tabId);
+  tabsState.orderByPane[sourcePaneId] = newSrcOrder;
   if (tabsState.activeByPane[sourcePaneId] === tabId) {
-    tabsState.activeByPane[sourcePaneId] = srcOrder.at(-1) ?? null;
+    tabsState.activeByPane[sourcePaneId] = newSrcOrder.at(-1) ?? null;
   }
 
   tab.paneId = targetPaneId;
   const targetOrder = tabsState.orderByPane[targetPaneId] || [];
-  if (insertBeforeTabId) {
-    const insertIdx = targetOrder.indexOf(insertBeforeTabId);
-    if (insertIdx !== -1) targetOrder.splice(insertIdx, 0, tabId);
-    else targetOrder.push(tabId);
-  } else {
-    targetOrder.push(tabId);
-  }
-  tabsState.orderByPane[targetPaneId] = targetOrder;
+  const newTargetOrder =
+    insertBeforeTabId
+      ? (() => {
+          const insertIdx = targetOrder.indexOf(insertBeforeTabId);
+          if (insertIdx !== -1) {
+            const next = [...targetOrder];
+            next.splice(insertIdx, 0, tabId);
+            return next;
+          }
+          return [...targetOrder, tabId];
+        })()
+      : [...targetOrder, tabId];
+  tabsState.orderByPane[targetPaneId] = newTargetOrder;
   if (tabsState.tabs[tabId]) {
     tabsState.tabs[tabId].paneId = targetPaneId;
     tabsState.tabs[tabId].status = statusClass;
@@ -158,13 +163,14 @@ function handleDropOnSplitZone(tabId, sourcePaneId, targetPaneId, zone) {
 
   const statusClass = tabsState.tabs[tabId]?.status ?? 'idle';
 
+  // Remove tab from source pane (same-pane split or cross-pane drop)
+  const srcOrder = tabsState.orderByPane[sourcePaneId] || [];
+  const newSrcOrder = srcOrder.filter((id) => id !== tabId);
+  tabsState.orderByPane[sourcePaneId] = newSrcOrder;
+  if (tabsState.activeByPane[sourcePaneId] === tabId) {
+    tabsState.activeByPane[sourcePaneId] = newSrcOrder.at(-1) ?? null;
+  }
   if (sourcePaneId === targetPaneId) {
-    const srcOrder = tabsState.orderByPane[sourcePaneId] || [];
-    const idx = srcOrder.indexOf(tabId);
-    if (idx !== -1) srcOrder.splice(idx, 1);
-    if (tabsState.activeByPane[sourcePaneId] === tabId) {
-      tabsState.activeByPane[sourcePaneId] = srcOrder.at(-1) ?? null;
-    }
     delete tabsState.tabs[tabId];
   }
 
@@ -173,11 +179,11 @@ function handleDropOnSplitZone(tabId, sourcePaneId, targetPaneId, zone) {
 
   tab.paneId = newPaneId;
   tabsState.tabs[tabId] = { script: tab.script, status: statusClass, running: tab.running, busy: tab.busy, paneId: newPaneId };
-  const newOrder = tabsState.orderByPane[newPaneId] || [];
-  newOrder.push(tabId);
+  const newOrder = [...(tabsState.orderByPane[newPaneId] || []), tabId];
   tabsState.orderByPane[newPaneId] = newOrder;
   tabsState.activeByPane[newPaneId] = tabId;
   setFocusedPane(newPaneId);
+  collapsePaneIfPossible(sourcePaneId);
   scheduleFitVisibleTerminals();
 }
 
