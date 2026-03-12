@@ -1,7 +1,13 @@
-const { app, BrowserWindow, dialog, ipcMain } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, protocol } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn, execSync, spawnSync } = require('child_process');
+
+// Register a custom scheme so the Vite-built renderer can use ES module
+// imports from a proper origin (file:// blocks dynamic import() due to CORS).
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true } },
+]);
 
 // --- Session persistence ---
 function getSessionFile() {
@@ -111,7 +117,23 @@ app.whenReady().then(() => {
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173');
   } else {
-    mainWindow.loadFile(path.join(__dirname, 'dist-renderer', 'index.html'));
+    const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2' };
+    protocol.handle('app', (request) => {
+      let { pathname } = new URL(request.url);
+      pathname = decodeURIComponent(pathname);
+      const filePath = path.join(__dirname, 'dist-renderer', pathname);
+      try {
+        const data = fs.readFileSync(filePath);
+        const ext = path.extname(filePath).toLowerCase();
+        return new Response(data, {
+          status: 200,
+          headers: { 'Content-Type': MIME[ext] || 'application/octet-stream' },
+        });
+      } catch {
+        return new Response('Not Found', { status: 404 });
+      }
+    });
+    mainWindow.loadURL('app://./index.html');
   }
   mainWindow.setMenuBarVisibility(false);
 });

@@ -11,7 +11,7 @@
     "tailwind:watch": "tailwindcss -i tailwind-src.css -o tailwind.css --watch",
     "build:renderer": "vite build",
     "prebuild": "node scripts/build-icon.js",
-    "build": "bun run build:renderer && electron-packager . windows-npm-runner --platform=win32 --arch=x64 --icon=assets/icon.ico --out=dist --overwrite --prune=true --ignore=dist --ignore=dist-renderer --ignore=src --ignore=scripts --ignore=assets/icon-square.png --ignore=assets/icon-concept.png --ignore=assets/icon-1024.png"
+    "build": "bun run build:renderer && electron-packager . windows-npm-runner --platform=win32 --arch=x64 --icon=assets/icon.ico --out=dist --overwrite --prune=true \"--ignore=^/dist[^-]\" --ignore=^/src --ignore=^/scripts --ignore=/\\.cursor --ignore=/\\.vscode --ignore=/\\.claude \"--ignore=^/tailwind-src\\.css$\" \"--ignore=^/tailwind\\.css$\" \"--ignore=^/svelte\\.config\" \"--ignore=^/vite\\.config\" \"--ignore=^/bun\\.lock$\" \"--ignore=^/index\\.html$\" \"--ignore=^/assets/icon-square\" \"--ignore=^/assets/icon-concept\" \"--ignore=^/assets/icon-1024\""
   },
   "dependencies": {
     "@xterm/addon-fit": "^0.10.0",
