@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+@source "./index.html";
+@source "./renderer.js";
+
+/* --- Theme (Catppuccin-inspired) --- */
+@theme {
+  --color-base: #1e1e2e;
+  --color-surface: #181825;
+  --color-overlay: #11111b;
+  --color-border: #313244;
+  --color-muted: #6c7086;
+  --color-accent: #89b4fa;
+  --color-green: #a6e3a1;
+  --color-red: #f38ba8;
+  --color-yellow: #f9e2af;
+  --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  --animate-bookmark-slide-in: bookmark-slide-in 0.3s ease-out;
+  @keyframes bookmark-slide-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+/* --- Components that need pseudo-elements, :has(), keyframes, or parent/child state --- */
+
+/* Settings select custom arrow (data URL) */
+.settings-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236c7086' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+}
+.settings-select option {
+  background: var(--color-overlay);
+  color: #cdd6f4;
+}
+.settings-select option:disabled {
+  color: var(--color-muted);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted);
+}

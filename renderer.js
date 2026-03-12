@@ -26,12 +26,53 @@ const btnSaveProject = document.getElementById('btn-save-project');
 const btnSavedProjects = document.getElementById('btn-saved-projects');
 const btnStopAll = document.getElementById('btn-stop-all');
 
+const sidebarEl = document.getElementById('sidebar');
+const sidebarResizeHandle = document.getElementById('sidebar-resize-handle');
+
+const SIDEBAR_MIN = 180;
+const SIDEBAR_MAX_PERCENT = 0.5;
+
+function initSidebarResize() {
+  let startX = 0;
+  let startWidth = 0;
+
+  function onMove(e) {
+    const appRect = document.getElementById('app').getBoundingClientRect();
+    const maxPx = Math.floor(appRect.width * SIDEBAR_MAX_PERCENT);
+    let w = startWidth + (e.clientX - startX);
+    w = Math.max(SIDEBAR_MIN, Math.min(maxPx, w));
+    sidebarEl.style.width = `${w}px`;
+  }
+  function onUp() {
+    sidebarResizeHandle.classList.remove('bg-accent/20');
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    saveAllSettings();
+  }
+  sidebarResizeHandle.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    startX = e.clientX;
+    startWidth = sidebarEl.getBoundingClientRect().width;
+    sidebarResizeHandle.classList.add('bg-accent/20');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+}
+initSidebarResize();
+
 const paneRoot = document.createElement('div');
 paneRoot.id = 'pane-root';
+paneRoot.className = 'absolute inset-0 min-w-0 min-h-0';
 terminalContainer.appendChild(paneRoot);
 
 const contextMenu = document.createElement('div');
 contextMenu.id = 'context-menu';
+contextMenu.className = 'fixed min-w-[160px] p-1.5 bg-overlay border border-border rounded-lg shadow-xl z-20';
 contextMenu.hidden = true;
 document.body.appendChild(contextMenu);
 
@@ -39,28 +80,30 @@ document.body.appendChild(contextMenu);
 const btnSettings = document.getElementById('btn-settings');
 const settingsOverlay = document.createElement('div');
 settingsOverlay.id = 'settings-overlay';
+settingsOverlay.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
 settingsOverlay.hidden = true;
 document.body.appendChild(settingsOverlay);
 
 function buildSettingsModal() {
   const modal = document.createElement('div');
   modal.id = 'settings-modal';
+  modal.className = 'bg-surface border border-border rounded-xl p-6 w-[360px] shadow-2xl';
 
   const title = document.createElement('div');
-  title.className = 'settings-title';
+  title.className = 'text-[15px] font-semibold mb-5 text-[#cdd6f4]';
   title.textContent = 'Settings';
   modal.appendChild(title);
 
   // Package Manager row
   const row = document.createElement('div');
-  row.className = 'settings-row';
+  row.className = 'flex items-center justify-between gap-3 mb-3.5';
 
   const label = document.createElement('span');
-  label.className = 'settings-row-label';
+  label.className = 'text-[13px] text-[#cdd6f4]';
   label.textContent = 'Package Manager';
 
   const select = document.createElement('select');
-  select.className = 'settings-select';
+  select.className = 'py-1.5 pl-2.5 pr-7 bg-overlay text-[#cdd6f4] border border-border rounded-md text-[13px] font-mono cursor-pointer transition-[border-color] duration-[0.12s] hover:border-muted focus:outline-none focus:border-accent appearance-none bg-[url("data:image/svg+xml,%3Csvg_width=\'10\'_height=\'6\'_viewBox=\'0_0_10_6\'_fill=\'none\'_xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath_d=\'M1_1l4_4_4-4\'_stroke=\'%236c7086\'_stroke-width=\'1.5\'_stroke-linecap=\'round\'_stroke-linejoin=\'round\'/%3E%3C/svg%3E")] bg-no-repeat bg-[position:right_8px_center] [&>option]:bg-overlay [&>option]:text-[#cdd6f4] [&>option:disabled]:text-muted';
 
   for (const name of ['npm', 'pnpm', 'bun']) {
     const opt = document.createElement('option');
@@ -127,11 +170,18 @@ btnStopAll.addEventListener('click', async () => {
 // --- Saved projects dropdown ---
 const savedProjectsDropdown = document.createElement('div');
 savedProjectsDropdown.id = 'saved-projects-dropdown';
+savedProjectsDropdown.className = 'fixed min-w-[220px] max-w-[340px] p-1.5 bg-overlay border border-border rounded-lg shadow-xl z-[25]';
 savedProjectsDropdown.hidden = true;
 document.body.appendChild(savedProjectsDropdown);
 
 function saveAllSettings() {
-  api.saveSettings({ packageManager, bookmarks: [...bookmarks], savedProjects });
+  const sidebarWidth = sidebarEl ? sidebarEl.getBoundingClientRect().width : null;
+  api.saveSettings({
+    packageManager,
+    bookmarks: [...bookmarks],
+    savedProjects,
+    ...(sidebarWidth != null && sidebarWidth > 0 ? { sidebarWidth: Math.round(sidebarWidth) } : {}),
+  });
 }
 
 function normalizePath(p) {
@@ -183,11 +233,16 @@ function updateProjectButtons() {
   const isSaved = isCurrentProjectSaved();
 
   btnSaveProject.hidden = !hasProject;
-  btnSaveProject.classList.toggle('active', isSaved);
+  btnSaveProject.classList.toggle('text-yellow', isSaved);
+  btnSaveProject.classList.toggle('hover:bg-yellow/10', isSaved);
+  btnSaveProject.classList.toggle('text-muted', !isSaved);
+  btnSaveProject.classList.toggle('hover:bg-white/10', !isSaved);
   btnSaveProject.title = isSaved ? 'Remove from saved' : 'Save project';
   btnSaveProject.innerHTML = `<svg width="14" height="14" viewBox="0 0 16 16" fill="${isSaved ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.5"><path d="M3 2h10v12l-5-3.5L3 14V2z"/></svg>`;
 
   btnSavedProjects.hidden = savedProjects.length === 0;
+  btnOpen.classList.toggle('rounded-md', savedProjects.length === 0);
+  btnOpen.classList.toggle('rounded-l-md', savedProjects.length > 0);
 }
 
 function renderSavedProjectsDropdown() {
@@ -195,7 +250,7 @@ function renderSavedProjectsDropdown() {
 
   if (savedProjects.length === 0) {
     const hint = document.createElement('div');
-    hint.className = 'saved-projects-hint';
+    hint.className = 'py-2.5 text-muted text-xs text-center';
     hint.textContent = 'No saved projects';
     savedProjectsDropdown.appendChild(hint);
     return;
@@ -203,16 +258,16 @@ function renderSavedProjectsDropdown() {
 
   for (const proj of savedProjects) {
     const item = document.createElement('div');
-    item.className = 'saved-project-item';
+    item.className = 'flex items-center w-full border-0 rounded-md bg-transparent text-xs text-left cursor-pointer text-[#cdd6f4]';
 
     const nameBtn = document.createElement('button');
-    nameBtn.className = 'saved-project-name';
+    nameBtn.className = 'flex-1 py-2 px-2.5 border-0 rounded-md bg-transparent text-[13px] font-mono text-left cursor-pointer truncate text-[#cdd6f4] hover:bg-accent/10';
     nameBtn.textContent = proj.name;
     nameBtn.title = proj.filePath;
     nameBtn.addEventListener('click', () => openSavedProject(proj.filePath));
 
     const removeBtn = document.createElement('button');
-    removeBtn.className = 'saved-project-remove';
+    removeBtn.className = 'flex items-center justify-center w-[22px] h-[22px] border-0 rounded bg-transparent text-muted text-sm cursor-pointer shrink-0 transition-colors duration-[0.12s] hover:bg-red/20 hover:text-red';
     removeBtn.title = 'Remove';
     removeBtn.innerHTML = '&times;';
     removeBtn.addEventListener('click', (e) => {
@@ -268,24 +323,24 @@ class PaneGroup {
     this.activeTabId = null;
 
     this.el = document.createElement('section');
-    this.el.className = 'pane-group';
+    this.el.className = 'pane-group flex flex-col w-full h-full min-w-0 min-h-0 bg-base border border-transparent';
     this.el.dataset.paneId = this.id;
 
     this.header = document.createElement('div');
-    this.header.className = 'pane-header';
+    this.header.className = 'flex items-stretch min-h-9 bg-overlay border-b border-border';
 
     this.tabBar = document.createElement('div');
-    this.tabBar.className = 'pane-tab-bar';
+    this.tabBar.className = 'pane-tab-bar flex-1 flex overflow-x-auto min-w-0 empty:after:content-["No_tabs"] empty:after:flex empty:after:items-center empty:after:px-3 empty:after:text-muted empty:after:text-xs';
 
     this.actions = document.createElement('div');
-    this.actions.className = 'pane-actions';
+    this.actions.className = 'flex items-center gap-0.5 p-1 border-l border-border';
 
     this.closePaneBtn = createPaneActionButton('Close pane', `
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
         <path d="M4 4l8 8"/><path d="M12 4l-8 8"/>
       </svg>
     `);
-    this.closePaneBtn.classList.add('btn-close-pane');
+    this.closePaneBtn.classList.add('btn-close-pane', 'hover:bg-red/15', 'hover:text-red');
 
     this.actions.append(this.closePaneBtn);
     this.header.append(this.tabBar, this.actions);
@@ -296,7 +351,8 @@ class PaneGroup {
       if (event.target.closest('.tab')) return; // Let tab handle it
       event.preventDefault();
       event.dataTransfer.dropEffect = 'move';
-      this.dropOverlay.classList.remove('visible');
+      this.dropOverlay.classList.remove('grid');
+      this.dropOverlay.classList.add('hidden');
       this._activeDropZone = null;
       this.tabBar.classList.add('drag-over-bar');
     });
@@ -321,21 +377,21 @@ class PaneGroup {
     });
 
     this.body = document.createElement('div');
-    this.body.className = 'pane-body';
+    this.body.className = 'relative flex-1 min-w-0 min-h-0 bg-base';
 
     this.emptyHint = document.createElement('div');
-    this.emptyHint.className = 'pane-empty-state';
+    this.emptyHint.className = 'absolute inset-0 flex items-center justify-center text-muted text-[13px]';
     this.emptyHint.textContent = 'This pane is empty.';
     this.body.appendChild(this.emptyHint);
 
     // Drop zone overlay for drag-and-drop splitting
     this.dropOverlay = document.createElement('div');
-    this.dropOverlay.className = 'drop-zone-overlay';
+    this.dropOverlay.className = 'drop-zone-overlay absolute inset-0 hidden z-10 grid-cols-2 grid-rows-2 gap-1 p-1';
     this.dropOverlay.innerHTML = `
-      <div class="drop-zone drop-left" data-zone="left"></div>
-      <div class="drop-zone drop-right" data-zone="right"></div>
-      <div class="drop-zone drop-top" data-zone="top"></div>
-      <div class="drop-zone drop-bottom" data-zone="bottom"></div>
+      <div class="drop-zone drop-left rounded-md border-2 border-dashed border-transparent transition-colors duration-[0.12s] col-start-1 row-[1/-1] [&.active]:bg-accent/10 [&.active]:border-accent/40" data-zone="left"></div>
+      <div class="drop-zone drop-right rounded-md border-2 border-dashed border-transparent transition-colors duration-[0.12s] col-start-2 row-[1/-1] [&.active]:bg-accent/10 [&.active]:border-accent/40" data-zone="right"></div>
+      <div class="drop-zone drop-top rounded-md border-2 border-dashed border-transparent transition-colors duration-[0.12s] col-[1/-1] row-start-1 [&.active]:bg-accent/10 [&.active]:border-accent/40" data-zone="top"></div>
+      <div class="drop-zone drop-bottom rounded-md border-2 border-dashed border-transparent transition-colors duration-[0.12s] col-[1/-1] row-start-2 [&.active]:bg-accent/10 [&.active]:border-accent/40" data-zone="bottom"></div>
     `;
     this.body.appendChild(this.dropOverlay);
 
@@ -348,7 +404,8 @@ class PaneGroup {
       event.preventDefault();
       event.dataTransfer.dropEffect = 'move';
 
-      this.dropOverlay.classList.add('visible');
+      this.dropOverlay.classList.remove('hidden');
+      this.dropOverlay.classList.add('grid');
       const rect = this.body.getBoundingClientRect();
       const zone = getDropZone(event, rect);
 
@@ -362,7 +419,8 @@ class PaneGroup {
 
     this.el.addEventListener('dragleave', (event) => {
       if (!this.el.contains(event.relatedTarget)) {
-        this.dropOverlay.classList.remove('visible');
+        this.dropOverlay.classList.remove('grid');
+      this.dropOverlay.classList.add('hidden');
         this._activeDropZone = null;
         for (const el of this.dropOverlay.querySelectorAll('.drop-zone')) {
           el.classList.remove('active');
@@ -371,7 +429,8 @@ class PaneGroup {
     });
 
     this.el.addEventListener('drop', (event) => {
-      this.dropOverlay.classList.remove('visible');
+      this.dropOverlay.classList.remove('grid');
+      this.dropOverlay.classList.add('hidden');
       const zone = this._activeDropZone;
       this._activeDropZone = null;
       for (const el of this.dropOverlay.querySelectorAll('.drop-zone')) {
@@ -428,9 +487,8 @@ class PaneGroup {
         tab.paneId = newPane.id;
         tab.wrapper.dataset.paneId = newPane.id;
         tab.tabEl = newPane.createTabElement(tabId, tab.script);
-        const dot = tab.tabEl.querySelector('.status-dot');
-        if (dot) dot.className = `status-dot ${statusClass}`;
         newPane.tabs.set(tabId, tab);
+        updateTabStatus(tabId, statusClass);
         newPane.tabBar.appendChild(tab.tabEl);
         newPane.body.appendChild(tab.wrapper);
         newPane.switchToTab(tabId);
@@ -464,22 +522,25 @@ class PaneGroup {
   }
 
   render() {
-    this.el.classList.toggle('focused', focusedPaneId === this.id);
+    const showFocus = panes.size > 1 && focusedPaneId === this.id;
+    this.el.classList.toggle('border-accent/35', showFocus);
+    this.el.classList.toggle('border-transparent', !showFocus);
     this.tabBar.classList.toggle('empty', this.tabs.size === 0);
     this.emptyHint.style.display = this.tabs.size === 0 ? '' : 'none';
     this.closePaneBtn.style.display = this.parent ? '' : 'none';
+    this.actions.style.display = this.parent ? '' : 'none';
     return this.el;
   }
 
   createTabElement(id, name) {
     const tabEl = document.createElement('div');
-    tabEl.className = 'tab';
+    tabEl.className = 'tab flex items-center gap-2 px-3.5 h-9 text-xs font-mono cursor-pointer border-r border-border whitespace-nowrap transition-colors duration-[0.12s] select-none hover:bg-white/5';
     tabEl.dataset.id = id;
     tabEl.draggable = true;
     tabEl.innerHTML = `
-      <span class="status-dot idle"></span>
+      <span class="status-dot bg-border w-2 h-2 rounded-full shrink-0"></span>
       <span class="tab-name">${name}</span>
-      <span class="tab-close" title="Close">&times;</span>
+      <span class="tab-close flex items-center justify-center w-4.5 h-4.5 rounded text-sm text-muted transition-colors duration-[0.12s] hover:bg-red/20 hover:text-red" title="Close">&times;</span>
     `;
 
     tabEl.addEventListener('click', (event) => {
@@ -494,23 +555,24 @@ class PaneGroup {
     tabEl.addEventListener('dragstart', (event) => {
       event.dataTransfer.effectAllowed = 'move';
       event.dataTransfer.setData('text/plain', id);
-      tabEl.classList.add('dragging');
+      tabEl.classList.add('opacity-40');
       this._dragSourceId = id;
       draggedTabId = id;
       draggedSourcePaneId = this.id;
     });
 
     tabEl.addEventListener('dragend', () => {
-      tabEl.classList.remove('dragging');
+      tabEl.classList.remove('opacity-40');
       this._dragSourceId = null;
       draggedTabId = null;
       draggedSourcePaneId = null;
       for (const tab of this.tabBar.querySelectorAll('.tab')) {
-        tab.classList.remove('drag-over-left', 'drag-over-right');
+        tab.classList.remove('shadow-[inset_2px_0_0_var(--color-accent)]', 'shadow-[inset_-2px_0_0_var(--color-accent)]');
       }
       // Clean up all drop overlays
       for (const pane of panes.values()) {
-        pane.dropOverlay.classList.remove('visible');
+        pane.dropOverlay.classList.remove('grid');
+        pane.dropOverlay.classList.add('hidden');
         pane._activeDropZone = null;
         for (const el of pane.dropOverlay.querySelectorAll('.drop-zone')) {
           el.classList.remove('active');
@@ -524,7 +586,8 @@ class PaneGroup {
       event.dataTransfer.dropEffect = 'move';
 
       // Hide body drop overlay since we're on the tab bar
-      this.dropOverlay.classList.remove('visible');
+      this.dropOverlay.classList.remove('grid');
+      this.dropOverlay.classList.add('hidden');
       this._activeDropZone = null;
 
       // Show drop indicator on left or right half
@@ -533,16 +596,16 @@ class PaneGroup {
       const isLeft = event.clientX < midX;
 
       for (const tab of this.tabBar.querySelectorAll('.tab')) {
-        tab.classList.remove('drag-over-left', 'drag-over-right');
+        tab.classList.remove('shadow-[inset_2px_0_0_var(--color-accent)]', 'shadow-[inset_-2px_0_0_var(--color-accent)]');
       }
 
       if (tabEl.dataset.id !== draggedTabId) {
-        tabEl.classList.add(isLeft ? 'drag-over-left' : 'drag-over-right');
+        tabEl.classList.add(isLeft ? 'shadow-[inset_2px_0_0_var(--color-accent)]' : 'shadow-[inset_-2px_0_0_var(--color-accent)]');
       }
     });
 
     tabEl.addEventListener('dragleave', () => {
-      tabEl.classList.remove('drag-over-left', 'drag-over-right');
+      tabEl.classList.remove('shadow-[inset_2px_0_0_var(--color-accent)]', 'shadow-[inset_-2px_0_0_var(--color-accent)]');
     });
 
     tabEl.addEventListener('drop', (event) => {
@@ -568,7 +631,7 @@ class PaneGroup {
       }
 
       for (const tab of this.tabBar.querySelectorAll('.tab')) {
-        tab.classList.remove('drag-over-left', 'drag-over-right');
+        tab.classList.remove('shadow-[inset_2px_0_0_var(--color-accent)]', 'shadow-[inset_-2px_0_0_var(--color-accent)]');
       }
     });
 
@@ -654,8 +717,13 @@ class PaneGroup {
 
     for (const [tabId, paneTab] of this.tabs) {
       const isActive = tabId === this.activeTabId;
-      paneTab.wrapper.classList.toggle('active', isActive);
-      if (paneTab.tabEl) paneTab.tabEl.classList.toggle('active', isActive);
+      paneTab.wrapper.classList.toggle('hidden', !isActive);
+      paneTab.wrapper.classList.toggle('flex', isActive);
+      if (paneTab.tabEl) {
+        paneTab.tabEl.classList.toggle('bg-base', isActive);
+        paneTab.tabEl.classList.toggle('text-[#cdd6f4]', isActive);
+        paneTab.tabEl.classList.toggle('text-muted', !isActive);
+      }
     }
 
     this.render();
@@ -670,8 +738,13 @@ class PaneGroup {
 
     for (const [tabId, tab] of this.tabs) {
       const isActive = tabId === id;
-      tab.wrapper.classList.toggle('active', isActive);
-      if (tab.tabEl) tab.tabEl.classList.toggle('active', isActive);
+      tab.wrapper.classList.toggle('hidden', !isActive);
+      tab.wrapper.classList.toggle('flex', isActive);
+      if (tab.tabEl) {
+        tab.tabEl.classList.toggle('bg-base', isActive);
+        tab.tabEl.classList.toggle('text-[#cdd6f4]', isActive);
+        tab.tabEl.classList.toggle('text-muted', !isActive);
+      }
     }
 
     this.render();
@@ -698,25 +771,25 @@ class SplitContainer {
     secondChild.parent = this;
 
     this.el = document.createElement('div');
-    this.el.className = `split-container ${direction}`;
+    this.el.className = `split-container flex w-full h-full min-w-0 min-h-0 ${direction === 'horizontal' ? 'flex-row' : 'flex-col'}`;
   }
 
   render() {
-    this.el.className = `split-container ${this.direction}`;
+    this.el.className = `split-container flex w-full h-full min-w-0 min-h-0 ${this.direction === 'horizontal' ? 'flex-row' : 'flex-col'}`;
 
     const firstWrapper = document.createElement('div');
-    firstWrapper.className = 'split-child';
+    firstWrapper.className = 'split-child flex-[0_1_50%] min-w-0 min-h-0 overflow-hidden';
     firstWrapper.appendChild(this.children[0].render());
 
     const secondWrapper = document.createElement('div');
-    secondWrapper.className = 'split-child';
+    secondWrapper.className = 'split-child flex-[0_1_50%] min-w-0 min-h-0 overflow-hidden';
     secondWrapper.appendChild(this.children[1].render());
 
     this.childWrappers = [firstWrapper, secondWrapper];
     this.applySizes();
 
     const gutter = document.createElement('div');
-    gutter.className = `split-gutter ${this.direction}`;
+    gutter.className = `split-gutter relative shrink-0 bg-[rgba(49,50,68,0.9)] z-[2] after:absolute after:inset-[1px] after:bg-accent/8 after:opacity-0 after:transition-opacity after:duration-[0.12s] hover:after:opacity-100 ${this.direction === 'horizontal' ? 'w-1.5 cursor-col-resize' : 'h-1.5 cursor-row-resize'}`;
     gutter.addEventListener('mousedown', (event) => startResize(event, this));
 
     this.el.replaceChildren(firstWrapper, gutter, secondWrapper);
@@ -743,7 +816,7 @@ class SplitContainer {
 
 function createPaneActionButton(title, iconMarkup) {
   const button = document.createElement('button');
-  button.className = 'pane-action-btn';
+  button.className = 'pane-action-btn inline-flex items-center justify-center w-7 h-7 border-0 rounded-md bg-transparent text-muted cursor-pointer transition-colors duration-[0.12s] hover:bg-white/10 hover:text-[#cdd6f4]';
   button.type = 'button';
   button.title = title;
   button.innerHTML = iconMarkup;
@@ -851,9 +924,9 @@ function getTabStatusClass(tab) {
   if (!tab?.tabEl) return 'idle';
   const dot = tab.tabEl.querySelector('.status-dot');
   if (!dot) return 'idle';
-  for (const cls of dot.classList) {
-    if (cls !== 'status-dot') return cls;
-  }
+  if (dot.classList.contains('bg-green')) return 'running';
+  if (dot.classList.contains('bg-muted')) return 'exited-ok';
+  if (dot.classList.contains('bg-red')) return 'exited-fail';
   return 'idle';
 }
 
@@ -945,7 +1018,7 @@ function showContextMenu(x, y, items) {
   for (const item of items) {
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'context-menu-item';
+    button.className = 'context-menu-item block w-full py-2 px-2.5 border-0 rounded-md bg-transparent text-[#cdd6f4] text-xs text-left cursor-pointer hover:bg-accent/10';
     button.textContent = item.label;
     button.addEventListener('click', () => {
       hideContextMenu();
@@ -1042,25 +1115,25 @@ function renderScriptList(animateScript) {
 
   for (const name of sorted) {
     const li = document.createElement('li');
-    li.className = 'script-item';
+    li.className = 'script-item group flex items-center gap-2 py-1.5 pr-1 pl-2.5 rounded-md cursor-pointer text-[13px] font-mono transition-colors duration-[0.12s] text-[#cdd6f4] mb-0.5 hover:bg-accent/10';
     li.title = scripts[name];
-    if (bookmarks.has(name)) li.classList.add('bookmarked');
-    if (animateScript === name) li.classList.add('bookmark-animate');
+    if (bookmarks.has(name)) li.classList.add('bookmarked', 'border-l-2', 'border-l-yellow', 'pl-2');
+    if (animateScript === name) li.classList.add('animate-bookmark-slide-in');
 
     const icon = document.createElement('span');
-    icon.className = 'script-icon';
+    icon.className = 'script-icon flex items-center justify-center text-accent opacity-80';
     icon.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>`;
 
     const nameSpan = document.createElement('span');
-    nameSpan.className = 'script-name';
+    nameSpan.className = 'script-name flex-1 min-w-0 truncate';
     nameSpan.textContent = name;
 
     const actions = document.createElement('div');
-    actions.className = 'script-actions';
+    actions.className = 'script-actions flex items-center gap-0.5 max-w-0 overflow-hidden shrink-0 transition-[max-width] duration-200 ease-out -ml-1 group-hover:max-w-[56px]';
 
     const bookmarkBtn = document.createElement('button');
-    bookmarkBtn.className = 'script-bookmark-btn';
-    if (bookmarks.has(name)) bookmarkBtn.classList.add('active');
+    bookmarkBtn.className = 'script-bookmark-btn flex items-center justify-center w-6 h-6 border-0 rounded bg-transparent cursor-pointer opacity-0 transition-all duration-[0.12s] text-muted hover:text-yellow hover:bg-yellow/10 group-hover:opacity-100';
+    if (bookmarks.has(name)) bookmarkBtn.classList.add('active', 'text-yellow');
     bookmarkBtn.title = bookmarks.has(name) ? 'Remove bookmark' : 'Bookmark';
     bookmarkBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="${bookmarks.has(name) ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.5"><path d="M3 2h10v12l-5-3.5L3 14V2z"/></svg>`;
 
@@ -1070,7 +1143,7 @@ function renderScriptList(animateScript) {
     });
 
     const playBtn = document.createElement('button');
-    playBtn.className = 'script-play-btn';
+    playBtn.className = 'script-play-btn flex items-center justify-center w-6 h-6 border-0 rounded bg-transparent cursor-pointer opacity-0 transition-all duration-[0.12s] text-green hover:bg-green/15 group-hover:opacity-100';
     playBtn.title = 'Run Script';
     playBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l9-5.5z"/></svg>`;
 
@@ -1140,31 +1213,31 @@ function createTerminalTab(name) {
   term.loadAddon(fitAddon);
 
   const wrapper = document.createElement('div');
-  wrapper.className = 'terminal-wrapper';
+  wrapper.className = 'terminal-wrapper absolute inset-0 py-2 px-2 pb-2.5 flex-col min-w-0 min-h-0 hidden';
   wrapper.innerHTML = `
-    <div class="terminal-controls">
-      <button class="ctrl-btn btn-start" data-action="start" title="Start">
+    <div class="terminal-controls flex gap-0.5 py-1 px-2 justify-end">
+      <button class="ctrl-btn btn-start flex items-center justify-center w-7 h-7 border-0 rounded-md bg-transparent text-muted cursor-pointer transition-all duration-[0.12s] disabled:opacity-[0.28] disabled:cursor-not-allowed disabled:pointer-events-none hover:text-green hover:bg-green/10" data-action="start" title="Start">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
           <path d="M4 2.5v11l9-5.5z"/>
         </svg>
       </button>
-      <button class="ctrl-btn btn-rerun" data-action="rerun" title="Re-run">
+      <button class="ctrl-btn btn-rerun flex items-center justify-center w-7 h-7 border-0 rounded-md bg-transparent text-muted cursor-pointer transition-all duration-[0.12s] disabled:opacity-[0.28] disabled:cursor-not-allowed disabled:pointer-events-none hover:text-accent hover:bg-accent/10" data-action="rerun" title="Re-run">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M1 2v5h5"/><path d="M3.5 10a5 5 0 1 0 1-6.5L1 7"/>
         </svg>
       </button>
-      <button class="ctrl-btn btn-stop" data-action="stop" title="Stop">
+      <button class="ctrl-btn btn-stop flex items-center justify-center w-7 h-7 border-0 rounded-md bg-transparent text-muted cursor-pointer transition-all duration-[0.12s] disabled:opacity-[0.28] disabled:cursor-not-allowed disabled:pointer-events-none hover:text-red hover:bg-red/10" data-action="stop" title="Stop">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
           <rect x="3" y="3" width="10" height="10" rx="1.5"/>
         </svg>
       </button>
-      <button class="ctrl-btn btn-clear" data-action="clear" title="Clear">
+      <button class="ctrl-btn btn-clear flex items-center justify-center w-7 h-7 border-0 rounded-md bg-transparent text-muted cursor-pointer transition-all duration-[0.12s] disabled:opacity-[0.28] disabled:cursor-not-allowed disabled:pointer-events-none hover:text-yellow hover:bg-yellow/10" data-action="clear" title="Clear">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M2 4h12"/><path d="M5.5 4V2.5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V4"/><path d="M12.5 4v9a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 13V4"/>
         </svg>
       </button>
     </div>
-    <div class="term-box"></div>
+    <div class="term-box flex-1 min-h-0 border border-border rounded-lg overflow-hidden"></div>
   `;
 
   wrapper.addEventListener('mousedown', () => {
@@ -1261,7 +1334,12 @@ function setBusy(id, busyBtn, isBusy) {
   const tab = tabs.get(id);
   if (!tab) return;
   tab.busy = isBusy;
-  if (busyBtn) busyBtn.classList.toggle('loading', isBusy);
+  if (busyBtn) {
+    busyBtn.classList.toggle('cursor-wait', isBusy);
+    busyBtn.classList.toggle('pointer-events-none', isBusy);
+    const svg = busyBtn.querySelector('svg');
+    if (svg) svg.classList.toggle('animate-[spin_0.65s_linear_infinite]', isBusy);
+  }
   updateTabButtons(id);
 }
 
@@ -1269,7 +1347,13 @@ function updateTabStatus(id, statusClass) {
   const tab = tabs.get(id);
   if (!tab?.tabEl) return;
   const statusDot = tab.tabEl.querySelector('.status-dot');
-  if (statusDot) statusDot.className = `status-dot ${statusClass}`;
+  if (statusDot) {
+    statusDot.className = 'status-dot w-2 h-2 rounded-full shrink-0';
+    if (statusClass === 'idle') statusDot.classList.add('bg-border');
+    if (statusClass === 'running') statusDot.classList.add('bg-green', 'shadow-[0_0_6px_rgba(166,227,161,0.4)]');
+    if (statusClass === 'exited-ok') statusDot.classList.add('bg-muted');
+    if (statusClass === 'exited-fail') statusDot.classList.add('bg-red');
+  }
 }
 
 function startScript(id) {
@@ -1406,6 +1490,9 @@ api.onScriptError(({ id, data }) => {
   if (settings?.packageManager) packageManager = settings.packageManager;
   if (settings?.bookmarks) bookmarks = new Set(settings.bookmarks);
   if (settings?.savedProjects) savedProjects = settings.savedProjects;
+  if (settings?.sidebarWidth != null && settings.sidebarWidth >= SIDEBAR_MIN) {
+    sidebarEl.style.width = `${settings.sidebarWidth}px`;
+  }
 
   const result = await api.loadLastSession();
   if (!result || result.error) {

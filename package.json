@@ -6,8 +6,10 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
+    "build:css": "tailwindcss -i tailwind-src.css -o tailwind.css",
+    "tailwind:watch": "tailwindcss -i tailwind-src.css -o tailwind.css --watch",
     "prebuild": "node scripts/build-icon.js",
-    "build": "electron-packager . windows-npm-runner --platform=win32 --arch=x64 --icon=assets/icon.ico --out=dist --overwrite --prune=true --ignore=dist --ignore=scripts --ignore=assets/icon-square.png --ignore=assets/icon-concept.png --ignore=assets/icon-1024.png"
+    "build": "bun run build:css && electron-packager . windows-npm-runner --platform=win32 --arch=x64 --icon=assets/icon.ico --out=dist --overwrite --prune=true --ignore=dist --ignore=scripts --ignore=assets/icon-square.png --ignore=assets/icon-concept.png --ignore=assets/icon-1024.png"
   },
   "dependencies": {
     "@xterm/addon-fit": "^0.10.0",
@@ -15,8 +17,10 @@
   },
   "devDependencies": {
     "@electron/packager": "^18.3.6",
+    "@tailwindcss/cli": "^4.2.1",
     "electron": "^33.0.0",
     "png-to-ico": "^3.0.1",
-    "sharp": "^0.34.5"
+    "sharp": "^0.34.5",
+    "tailwindcss": "^4.2.1"
   }
 }

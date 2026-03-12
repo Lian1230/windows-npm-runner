@@ -44,6 +44,14 @@ Output is written to `dist/windows-npm-runner-win32-x64/`. Copy that folder anyw
 
 > **Icon update:** Replace `assets/icon.png` with your new image (any size/aspect ratio). The build automatically generates a multi-size `.ico` file from it via the `prebuild` step.
 
+### Tailwind CSS
+
+The project uses [Tailwind CSS](https://tailwindcss.com/) (v4) for styling. All UI is built with Tailwind utility classes in `index.html` and `renderer.js`; theme and a few component states live in `tailwind-src.css`.
+
+- **Build Tailwind once:** `bun run build:css` → generates `tailwind.css`
+- **Watch and rebuild on change:** `bun run tailwind:watch`
+- Source: `tailwind-src.css` (add `@source "./path/to/file"` if you add HTML/JS that use Tailwind classes). The full build (`bun run build`) runs `build:css` automatically.
+
 ---
 
 ## How to Use
