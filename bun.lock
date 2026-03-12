@@ -15,6 +15,7 @@
         "concurrently": "^9.2.1",
         "electron": "^33.0.0",
         "png-to-ico": "^3.0.1",
+        "png2icons": "^2.0.1",
         "sharp": "^0.34.5",
         "svelte": "^5.53.10",
         "tailwindcss": "^4.2.1",
@@ -633,6 +634,8 @@
     "plist": ["plist@3.1.0", "https://registry.npmmirror.com/plist/-/plist-3.1.0.tgz", { "dependencies": { "@xmldom/xmldom": "^0.8.8", "base64-js": "^1.5.1", "xmlbuilder": "^15.1.1" } }, "sha512-uysumyrvkUX0rX/dEVqt8gC3sTBzd4zoWfLeS29nb53imdaXVvLINYXTI2GNqzaMuvacNx4uJQ8+b3zXR0pkgQ=="],
 
     "png-to-ico": ["png-to-ico@3.0.1", "https://registry.npmmirror.com/png-to-ico/-/png-to-ico-3.0.1.tgz", { "dependencies": { "@types/node": "^22.10.3", "minimist": "^1.2.8", "pngjs": "^7.0.0" }, "bin": { "png-to-ico": "bin/cli.js" } }, "sha512-S8BOAoaGd9gT5uaemQ62arIY3Jzco7Uc7LwUTqRyqJDTsKqOAiyfyN4dSdT0D+Zf8XvgztgpRbM5wnQd7EgYwg=="],
+
+    "png2icons": ["png2icons@2.0.1", "https://registry.npmmirror.com/png2icons/-/png2icons-2.0.1.tgz", { "bin": { "png2icons": "./png2icons-cli.js" } }, "sha512-GDEQJr8OG4e6JMp7mABtXFSEpgJa1CCpbQiAR+EjhkHJHnUL9zPPtbOrjsMD8gUbikgv3j7x404b0YJsV3aVFA=="],
 
     "pngjs": ["pngjs@7.0.0", "https://registry.npmmirror.com/pngjs/-/pngjs-7.0.0.tgz", {}, "sha512-LKWqWJRhstyYo9pGvgor/ivk2w94eSjE3RGVuzLGlr3NmD8bf7RcYGze1mNdEHRP6TRP6rMuDHk5t44hnTRyow=="],
 

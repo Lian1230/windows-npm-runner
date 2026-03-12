@@ -257,7 +257,7 @@ function createTerminalTab(name) {
       brightWhite: '#a6adc8',
     },
     fontSize: 13,
-    fontFamily: "'Cascadia Code', 'Fira Code', 'Consolas', monospace",
+    fontFamily: "'Cascadia Code', 'Fira Code', 'Consolas', 'Menlo', 'SF Mono', monospace",
     scrollback: 10000,
     convertEol: true,
     cursorBlink: false,

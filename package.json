@@ -11,7 +11,8 @@
     "tailwind:watch": "tailwindcss -i tailwind-src.css -o tailwind.css --watch",
     "build:renderer": "vite build",
     "prebuild": "node scripts/build-icon.js",
-    "build": "bun run build:renderer && electron-packager . windows-npm-runner --platform=win32 --arch=x64 --icon=assets/icon.ico --out=dist --overwrite --prune=true \"--ignore=^/dist[^-]\" --ignore=^/src --ignore=^/scripts --ignore=/\\.cursor --ignore=/\\.vscode --ignore=/\\.claude \"--ignore=^/tailwind-src\\.css$\" \"--ignore=^/tailwind\\.css$\" \"--ignore=^/svelte\\.config\" \"--ignore=^/vite\\.config\" \"--ignore=^/bun\\.lock$\" \"--ignore=^/index\\.html$\" \"--ignore=^/assets/icon-square\" \"--ignore=^/assets/icon-concept\" \"--ignore=^/assets/icon-1024\""
+    "build": "bun run build:renderer && electron-packager . windows-npm-runner --platform=win32 --arch=x64 --icon=assets/icon.ico --out=dist --overwrite --prune=true \"--ignore=^/dist[^-]\" --ignore=^/src --ignore=^/scripts --ignore=/\\.cursor --ignore=/\\.vscode --ignore=/\\.claude \"--ignore=^/tailwind-src\\.css$\" \"--ignore=^/tailwind\\.css$\" \"--ignore=^/svelte\\.config\" \"--ignore=^/vite\\.config\" \"--ignore=^/bun\\.lock$\" \"--ignore=^/index\\.html$\" \"--ignore=^/assets/icon-square\" \"--ignore=^/assets/icon-concept\" \"--ignore=^/assets/icon-1024\"",
+    "build:mac": "bun run build:renderer && node scripts/build-icon.js && electron-packager . windows-npm-runner --platform=darwin --arch=arm64,x64 --icon=assets/icon.icns --out=dist --overwrite --prune=true \"--ignore=^/dist[^-]\" --ignore=^/src --ignore=^/scripts --ignore=/\\.cursor --ignore=/\\.vscode --ignore=/\\.claude \"--ignore=^/tailwind-src\\.css$\" \"--ignore=^/tailwind\\.css$\" \"--ignore=^/svelte\\.config\" \"--ignore=^/vite\\.config\" \"--ignore=^/bun\\.lock$\" \"--ignore=^/index\\.html$\" \"--ignore=^/assets/icon-square\" \"--ignore=^/assets/icon-concept\" \"--ignore=^/assets/icon-1024\""
   },
   "dependencies": {
     "@xterm/addon-fit": "^0.10.0",
@@ -24,6 +25,7 @@
     "concurrently": "^9.2.1",
     "electron": "^33.0.0",
     "png-to-ico": "^3.0.1",
+    "png2icons": "^2.0.1",
     "sharp": "^0.34.5",
     "svelte": "^5.53.10",
     "tailwindcss": "^4.2.1",

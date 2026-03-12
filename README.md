@@ -1,6 +1,6 @@
 # windows-npm-runner
 
-A lightweight Windows desktop app for running multiple npm scripts simultaneously in a split-pane terminal layout — with working Stop and Re-run controls.
+A lightweight desktop app for running multiple npm scripts simultaneously in a split-pane terminal layout — with working Stop and Re-run controls. Supports **Windows** and **macOS**.
 
 ![App Preview](./assets/preview.png)
 
@@ -16,8 +16,9 @@ The [npm-scripts runner extension for VS Code](https://marketplace.visualstudio.
 
 ## Prerequisites
 
-- **Windows 10 or 11**
-- **[Git for Windows](https://git-scm.com/download/win)** — the app runs scripts through Git Bash; without it, nothing will execute
+- **Windows 10 or 11** — or **macOS** (Intel or Apple Silicon)
+- **Windows:** [Git for Windows](https://git-scm.com/download/win) — the app runs scripts through Git Bash; without it, nothing will execute
+- **macOS:** No extra setup; the app uses your system shell (bash/zsh)
 - **[Node.js](https://nodejs.org/) v18+**
 
 ---
@@ -34,7 +35,7 @@ bun start
 
 ## Building a Distributable
 
-A standalone `windows-npm-runner.exe` (no installer required) can be built with:
+**Windows:** A standalone `windows-npm-runner.exe` (no installer required) can be built with:
 
 ```bash
 bun run build
@@ -42,7 +43,15 @@ bun run build
 
 Output is written to `dist/windows-npm-runner-win32-x64/`. Copy that folder anywhere and run `windows-npm-runner.exe` directly — no installation needed.
 
-> **Icon update:** Replace `assets/icon.png` with your new image (any size/aspect ratio). The build automatically generates a multi-size `.ico` file from it via the `prebuild` step.
+**macOS:** Build with:
+
+```bash
+bun run build:mac
+```
+
+Output is in `dist/` (e.g. `windows-npm-runner-darwin-arm64/` or `-x64/`). Copy the `.app` bundle to Applications or run it from the folder.
+
+> **Icon update:** Replace `assets/icon.png` with your new image (any size/aspect ratio). The build automatically generates a multi-size `.ico` (Windows) and `.icns` (macOS) from it via the `prebuild` step.
 
 ### Tailwind CSS
 
@@ -105,15 +114,14 @@ Click **Open package.json** again at any time to load a different project. Runni
 |-------|------------|
 | App shell | [Electron](https://www.electronjs.org/) v33 |
 | Terminal rendering | [xterm.js](https://xtermjs.org/) v5 + FitAddon |
-| Script execution | Git Bash (`bash.exe --login -c`) via Node `child_process.spawn` |
-| Process cleanup | Windows `taskkill /F /T` + `netstat` port detection |
+| Script execution | **Windows:** Git Bash (`bash.exe --login -c`). **macOS:** system shell (e.g. bash/zsh). Both via Node `child_process.spawn` |
+| Process cleanup | **Windows:** `taskkill /F /T` + `netstat` port detection. **macOS:** process group kill + `lsof` port detection |
 | UI | Vanilla HTML/CSS/JS (no framework) |
 
 ---
 
 ## Known Limitations
 
-- **Windows only.** Git Bash detection and `taskkill`-based process cleanup are Windows-specific.
-- **Git Bash required.** If Git for Windows is not installed, scripts will not run.
+- **Git Bash required on Windows.** If Git for Windows is not installed, scripts will not run on Windows. macOS does not require Git Bash.
 - **Read-only terminals.** You cannot type into the terminal (e.g. to answer interactive prompts). Terminals are output-only.
 - **One project at a time.** The app holds a single active project directory. Running scripts from multiple projects simultaneously is not supported.

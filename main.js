@@ -59,6 +59,9 @@ function parsePackageJson(filePath) {
 let mainWindow;
 const processes = new Map(); // id -> { proc, script, cwd, detectedPorts }
 
+const isWin = process.platform === 'win32';
+const isMac = process.platform === 'darwin';
+
 // --- Git Bash detection ---
 function findGitBash() {
   const candidates = [
@@ -95,6 +98,75 @@ function toUnixPath(winPath) {
     return `/${match[1].toLowerCase()}/${match[2]}`;
   }
   return normalized;
+}
+
+// --- macOS helpers (used only when isMac) ---
+function getMacShell() {
+  const shell = process.env.SHELL || '/bin/bash';
+  if (path.isAbsolute(shell) && fs.existsSync(shell)) return shell;
+  try {
+    const resolved = execSync('which ' + shell, { encoding: 'utf8', timeout: 1000 }).trim().split(/\r?\n/)[0];
+    return resolved && fs.existsSync(resolved) ? resolved : '/bin/bash';
+  } catch {
+    return '/bin/bash';
+  }
+}
+
+function toScriptPath(cwd) {
+  if (isWin) return toUnixPath(cwd);
+  return cwd;
+}
+
+function detectManagersMac() {
+  const managers = {};
+  for (const name of ['npm', 'pnpm', 'bun']) {
+    try {
+      const out = execSync('which ' + name, { encoding: 'utf8', timeout: 3000 });
+      const firstLine = out.trim().split(/\r?\n/)[0].trim();
+      managers[name] = firstLine || null;
+    } catch {
+      managers[name] = null;
+    }
+  }
+  return managers;
+}
+
+function getListeningPidsOnPortMac(port) {
+  const safePort = String(parseInt(port, 10));
+  if (safePort === 'NaN' || parseInt(safePort, 10) !== port) return [];
+  try {
+    const out = execSync('lsof -ti :' + safePort, { encoding: 'utf8', timeout: 3000 });
+    return out.trim().split(/\r?\n/).map((s) => parseInt(s.trim(), 10)).filter((n) => n > 0);
+  } catch {
+    return [];
+  }
+}
+
+function killProcessTreeMac(pid) {
+  try {
+    process.kill(-pid, 'SIGKILL');
+    return true;
+  } catch {
+    try {
+      process.kill(pid, 'SIGKILL');
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
+function killPidsOnPortsMac(ports) {
+  let killedAny = false;
+  for (const port of ports) {
+    for (const pid of getListeningPidsOnPortMac(port)) {
+      try {
+        process.kill(pid, 'SIGKILL');
+        killedAny = true;
+      } catch { /* ignore */ }
+    }
+  }
+  return killedAny;
 }
 
 // --- App lifecycle ---
@@ -209,17 +281,21 @@ ipcMain.handle('load-last-session', () => {
 
 // Detect available package managers
 ipcMain.handle('detect-managers', async () => {
-  const managers = {};
-  for (const name of ['npm', 'pnpm', 'bun']) {
-    try {
-      const out = execSync(`where ${name}`, { encoding: 'utf8', timeout: 3000, windowsHide: true });
-      const firstLine = out.trim().split(/\r?\n/)[0].trim();
-      managers[name] = firstLine || null;
-    } catch {
-      managers[name] = null;
+  if (isWin) {
+    const managers = {};
+    for (const name of ['npm', 'pnpm', 'bun']) {
+      try {
+        const out = execSync(`where ${name}`, { encoding: 'utf8', timeout: 3000, windowsHide: true });
+        const firstLine = out.trim().split(/\r?\n/)[0].trim();
+        managers[name] = firstLine || null;
+      } catch {
+        managers[name] = null;
+      }
     }
+    return managers;
   }
-  return managers;
+  if (isMac) return detectManagersMac();
+  return { npm: null, pnpm: null, bun: null };
 });
 
 // Settings
@@ -230,22 +306,36 @@ ipcMain.handle('save-settings', (_event, settings) => {
 
 // Run a script
 ipcMain.on('run-script', (event, { id, script, cwd }) => {
-  if (!BASH_PATH) {
-    event.sender.send('script-error', { id, data: 'Git Bash not found. Install Git for Windows.\r\n' });
+  if (isWin) {
+    if (!BASH_PATH) {
+      event.sender.send('script-error', { id, data: 'Git Bash not found. Install Git for Windows.\r\n' });
+      return;
+    }
+  } else if (!isMac) {
+    event.sender.send('script-error', { id, data: 'Unsupported platform.\r\n' });
     return;
   }
 
   const { packageManager } = readSettings();
-  const unixCwd = toUnixPath(cwd);
-  const cmd = `cd "${unixCwd}" && ${packageManager} run ${script}`;
+  const scriptCwd = toScriptPath(cwd);
+  const cmd = `cd "${scriptCwd}" && ${packageManager} run ${script}`;
 
   const spawnEnv = { ...process.env, FORCE_COLOR: '3', COLORTERM: 'truecolor', TERM: 'xterm-256color' };
   delete spawnEnv.NO_COLOR;
 
-  const proc = spawn(BASH_PATH, ['--login', '-c', cmd], {
-    env: spawnEnv,
-    windowsHide: true,
-  });
+  let proc;
+  if (isWin) {
+    proc = spawn(BASH_PATH, ['--login', '-c', cmd], {
+      env: spawnEnv,
+      windowsHide: true,
+    });
+  } else {
+    const shell = getMacShell();
+    proc = spawn(shell, ['-c', cmd], {
+      env: spawnEnv,
+      detached: true,
+    });
+  }
 
   const entry = { proc, script, cwd, detectedPorts: new Set() };
   processes.set(id, entry);
@@ -377,13 +467,26 @@ async function killProcess(id) {
 
   const pid = proc.pid;
   if (pid) {
-    // Fast path first: kill the bash tree. This is the normal stop/rerun path.
-    taskkillPid(pid, { includeTree: true, timeout: 1200 });
+    if (isWin) {
+      // Fast path first: kill the bash tree. This is the normal stop/rerun path.
+      taskkillPid(pid, { includeTree: true, timeout: 1200 });
 
-    // Only pay for the slower port fallback if something is still listening.
-    const portsStillListening = [...entry.detectedPorts].some((port) => getListeningPidsOnPort(port).length > 0);
-    if (portsStillListening) {
-      killProcessesOnPorts(entry.detectedPorts);
+      // Only pay for the slower port fallback if something is still listening.
+      const portsStillListening = [...entry.detectedPorts].some((port) => getListeningPidsOnPort(port).length > 0);
+      if (portsStillListening) {
+        killProcessesOnPorts(entry.detectedPorts);
+      }
+    } else if (isMac) {
+      killProcessTreeMac(-pid);
+
+      const portsStillListening = [...entry.detectedPorts].some((port) => getListeningPidsOnPortMac(port).length > 0);
+      if (portsStillListening) {
+        killPidsOnPortsMac(entry.detectedPorts);
+      }
+    } else {
+      try {
+        process.kill(pid, 'SIGKILL');
+      } catch { /* ignore */ }
     }
   }
 }

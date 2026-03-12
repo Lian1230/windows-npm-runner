@@ -12,6 +12,7 @@ async function buildIcon() {
 
   const sourceIcon = path.join(__dirname, '../assets/icon.png');
   const targetIco = path.join(__dirname, '../assets/icon.ico');
+  const targetIcns = path.join(__dirname, '../assets/icon.icns');
   const tempDir = path.join(__dirname, '../assets/.icon-tmp');
 
   if (!fs.existsSync(sourceIcon)) {
@@ -43,12 +44,21 @@ async function buildIcon() {
     const buf = await pngToIcoFn(tempFiles);
     fs.writeFileSync(targetIco, buf);
 
-    console.log(`Icon generated with sizes: ${ICO_SIZES.join(', ')}px → assets/icon.ico`);
+    // 3. Generate macOS ICNS from the same source PNG
+    const pngBuffer = fs.readFileSync(sourceIcon);
+    const png2iconsModule = await import('png2icons');
+    const icnsBuffer = png2iconsModule.createICNS(pngBuffer, png2iconsModule.BICUBIC, 0);
+    if (icnsBuffer) {
+      fs.writeFileSync(targetIcns, icnsBuffer);
+      console.log('Icon generated → assets/icon.ico, assets/icon.icns');
+    } else {
+      console.log(`Icon generated with sizes: ${ICO_SIZES.join(', ')}px → assets/icon.ico`);
+    }
   } catch (err) {
     console.error('Failed to process icon:', err);
     process.exit(1);
   } finally {
-    // 3. Cleanup temp files
+    // 4. Cleanup temp files
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
 }
