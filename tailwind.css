@@ -32,7 +32,6 @@
     --color-green: #a6e3a1;
     --color-red: #f38ba8;
     --color-yellow: #f9e2af;
-    --animate-bookmark-slide-in: bookmark-slide-in 0.3s ease-out;
   }
 }
 @layer base {
@@ -186,6 +185,9 @@
 @layer utilities {
   .pointer-events-none {
     pointer-events: none;
+  }
+  .visible {
+    visibility: visible;
   }
   .absolute {
     position: absolute;
@@ -343,9 +345,6 @@
   .w-\[26px\] {
     width: 26px;
   }
-  .w-\[220px\] {
-    width: 220px;
-  }
   .w-\[360px\] {
     width: 360px;
   }
@@ -382,12 +381,6 @@
   .shrink-0 {
     flex-shrink: 0;
   }
-  .animate-\[spin_0\.65s_linear_infinite\] {
-    animation: spin 0.65s linear infinite;
-  }
-  .animate-bookmark-slide-in {
-    animation: var(--animate-bookmark-slide-in);
-  }
   .cursor-col-resize {
     cursor: col-resize;
   }
@@ -397,17 +390,8 @@
   .cursor-row-resize {
     cursor: row-resize;
   }
-  .cursor-wait {
-    cursor: wait;
-  }
   .resize {
     resize: both;
-  }
-  .list-none {
-    list-style-type: none;
-  }
-  .appearance-none {
-    appearance: none;
   }
   .grid-cols-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -583,15 +567,6 @@
   .bg-transparent {
     background-color: transparent;
   }
-  .bg-\[url\(\"data\:image\/svg\+xml\,\%3Csvg_width\=\\\'10\\\'_height\=\\\'6\\\'_viewBox\=\\\'0_0_10_6\\\'_fill\=\\\'none\\\'_xmlns\=\\\'http\:\/\/www\.w3\.org\/2000\/svg\\\'\%3E\%3Cpath_d\=\\\'M1_1l4_4_4-4\\\'_stroke\=\\\'\%236c7086\\\'_stroke-width\=\\\'1\.5\\\'_stroke-linecap\=\\\'round\\\'_stroke-linejoin\=\\\'round\\\'\/\%3E\%3C\/svg\%3E\"\)\] {
-    background-image: url("data:image/svg+xml,%3Csvg_width=\'10\'_height=\'6\'_viewBox=\'0_0_10_6\'_fill=\'none\'_xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath_d=\'M1_1l4_4_4-4\'_stroke=\'%236c7086\'_stroke-width=\'1.5\'_stroke-linecap=\'round\'_stroke-linejoin=\'round\'/%3E%3C/svg%3E");
-  }
-  .bg-\[position\:right_8px_center\] {
-    background-position: right 8px center;
-  }
-  .bg-no-repeat {
-    background-repeat: no-repeat;
-  }
   .p-0 {
     padding: calc(var(--spacing) * 0);
   }
@@ -609,6 +584,9 @@
   }
   .px-2\.5 {
     padding-inline: calc(var(--spacing) * 2.5);
+  }
+  .px-3 {
+    padding-inline: calc(var(--spacing) * 3);
   }
   .px-3\.5 {
     padding-inline: calc(var(--spacing) * 3.5);
@@ -724,9 +702,6 @@
   .opacity-0 {
     opacity: 0%;
   }
-  .opacity-40 {
-    opacity: 40%;
-  }
   .opacity-80 {
     opacity: 80%;
   }
@@ -749,10 +724,6 @@
   .shadow-xl {
     --tw-shadow: 0 20px 25px -5px var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 8px 10px -6px var(--tw-shadow-color, rgb(0 0 0 / 0.1));
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
-  }
-  .blur {
-    --tw-blur: blur(8px);
-    filter: var(--tw-blur,) var(--tw-brightness,) var(--tw-contrast,) var(--tw-grayscale,) var(--tw-hue-rotate,) var(--tw-invert,) var(--tw-saturate,) var(--tw-sepia,) var(--tw-drop-shadow,);
   }
   .transition-\[border-color\] {
     transition-property: border-color;
@@ -859,55 +830,6 @@
       content: var(--tw-content);
       --tw-duration: 0.12s;
       transition-duration: 0.12s;
-    }
-  }
-  .empty\:after\:flex {
-    &:empty {
-      &::after {
-        content: var(--tw-content);
-        display: flex;
-      }
-    }
-  }
-  .empty\:after\:items-center {
-    &:empty {
-      &::after {
-        content: var(--tw-content);
-        align-items: center;
-      }
-    }
-  }
-  .empty\:after\:px-3 {
-    &:empty {
-      &::after {
-        content: var(--tw-content);
-        padding-inline: calc(var(--spacing) * 3);
-      }
-    }
-  }
-  .empty\:after\:text-xs {
-    &:empty {
-      &::after {
-        content: var(--tw-content);
-        font-size: var(--text-xs);
-        line-height: var(--tw-leading, var(--text-xs--line-height));
-      }
-    }
-  }
-  .empty\:after\:text-muted {
-    &:empty {
-      &::after {
-        content: var(--tw-content);
-        color: var(--color-muted);
-      }
-    }
-  }
-  .empty\:after\:content-\[\"No_tabs\"\] {
-    &:empty {
-      &::after {
-        --tw-content: "No tabs";
-        content: var(--tw-content);
-      }
     }
   }
   .hover\:border-muted {
@@ -1121,21 +1043,6 @@
       }
     }
   }
-  .\[\&\>option\]\:bg-overlay {
-    &>option {
-      background-color: var(--color-overlay);
-    }
-  }
-  .\[\&\>option\]\:text-\[\#cdd6f4\] {
-    &>option {
-      color: #cdd6f4;
-    }
-  }
-  .\[\&\>option\:disabled\]\:text-muted {
-    &>option:disabled {
-      color: var(--color-muted);
-    }
-  }
 }
 .settings-select {
   appearance: none;
@@ -1242,59 +1149,6 @@
   inherits: false;
   initial-value: 0 0 #0000;
 }
-@property --tw-blur {
-  syntax: "*";
-  inherits: false;
-}
-@property --tw-brightness {
-  syntax: "*";
-  inherits: false;
-}
-@property --tw-contrast {
-  syntax: "*";
-  inherits: false;
-}
-@property --tw-grayscale {
-  syntax: "*";
-  inherits: false;
-}
-@property --tw-hue-rotate {
-  syntax: "*";
-  inherits: false;
-}
-@property --tw-invert {
-  syntax: "*";
-  inherits: false;
-}
-@property --tw-opacity {
-  syntax: "*";
-  inherits: false;
-}
-@property --tw-saturate {
-  syntax: "*";
-  inherits: false;
-}
-@property --tw-sepia {
-  syntax: "*";
-  inherits: false;
-}
-@property --tw-drop-shadow {
-  syntax: "*";
-  inherits: false;
-}
-@property --tw-drop-shadow-color {
-  syntax: "*";
-  inherits: false;
-}
-@property --tw-drop-shadow-alpha {
-  syntax: "<percentage>";
-  inherits: false;
-  initial-value: 100%;
-}
-@property --tw-drop-shadow-size {
-  syntax: "*";
-  inherits: false;
-}
 @property --tw-duration {
   syntax: "*";
   inherits: false;
@@ -1307,21 +1161,6 @@
   syntax: "*";
   initial-value: "";
   inherits: false;
-}
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-@keyframes bookmark-slide-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 @layer properties {
   @supports ((-webkit-hyphens: none) and (not (margin-trim: inline))) or ((-moz-orient: inline) and (not (color:rgb(from red r g b)))) {
@@ -1343,19 +1182,6 @@
       --tw-ring-offset-width: 0px;
       --tw-ring-offset-color: #fff;
       --tw-ring-offset-shadow: 0 0 #0000;
-      --tw-blur: initial;
-      --tw-brightness: initial;
-      --tw-contrast: initial;
-      --tw-grayscale: initial;
-      --tw-hue-rotate: initial;
-      --tw-invert: initial;
-      --tw-opacity: initial;
-      --tw-saturate: initial;
-      --tw-sepia: initial;
-      --tw-drop-shadow: initial;
-      --tw-drop-shadow-color: initial;
-      --tw-drop-shadow-alpha: 100%;
-      --tw-drop-shadow-size: initial;
       --tw-duration: initial;
       --tw-ease: initial;
       --tw-content: "";

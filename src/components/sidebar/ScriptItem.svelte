@@ -1,7 +1,7 @@
 <script>
   import { projectState } from '../../stores/app.svelte.js';
 
-  let { name, command, animate = false } = $props();
+  let { name, command } = $props();
 
   const isBookmarked = $derived(projectState.bookmarks.has(name));
 
@@ -26,15 +26,15 @@
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
-<li
+<div
   role="option"
+  tabindex="0"
   aria-selected="false"
   class="script-item group flex items-center gap-2 py-1.5 pr-1 pl-2.5 rounded-md cursor-pointer text-[13px] font-mono transition-colors duration-[0.12s] text-[#cdd6f4] mb-0.5 hover:bg-accent/10"
   class:bookmarked={isBookmarked}
   class:border-l-2={isBookmarked}
   class:border-l-yellow={isBookmarked}
   class:pl-2={isBookmarked}
-  class:animate-bookmark-slide-in={animate}
   title={command}
   onclick={run}
   oncontextmenu={onContextMenu}
@@ -73,4 +73,4 @@
       </svg>
     </button>
   </div>
-</li>
+</div>

@@ -1,9 +1,11 @@
 <script>
+  import { flip } from 'svelte/animate';
   import { projectState } from '../../stores/app.svelte.js';
   import ScriptItem from './ScriptItem.svelte';
 
   const SIDEBAR_MIN = 180;
   const SIDEBAR_MAX_PERCENT = 0.5;
+  const FLIP_DURATION_MS = 260;
 
   let { initialWidth = 220 } = $props();
   // svelte-ignore state_referenced_locally
@@ -11,7 +13,6 @@
 
   // Sync when settings are loaded after mount (happens once on startup).
   $effect(() => { sidebarWidth = initialWidth; });
-  let lastAnimated = $state(null);
 
   // Expose sidebar width getter for saveAllSettings in renderer.js.
   window.getSidebarWidth = () => sidebarWidth;
@@ -23,11 +24,6 @@
       ...names.filter((n) => !projectState.bookmarks.has(n)),
     ];
   });
-
-  // Listen for renderScriptList calls from renderer.js so we can animate the last-toggled script.
-  window.renderScriptList = (animateScript) => {
-    lastAnimated = animateScript ?? null;
-  };
 
   /** Svelte action: drag-to-resize the sidebar. */
   function resizable(node) {
@@ -81,15 +77,16 @@
   <div id="sidebar-header" class="pt-3 px-4 pb-2 text-[11px] font-bold uppercase tracking-wider text-muted">
     Scripts
   </div>
-  <ul id="script-list" role="listbox" aria-label="Scripts" class="list-none overflow-y-auto flex-1 py-1 px-2">
+  <div id="script-list" role="listbox" aria-label="Scripts" class="overflow-y-auto flex-1 py-1 px-2">
     {#each sortedScripts() as name (name)}
-      <ScriptItem
-        {name}
-        command={projectState.scripts[name]}
-        animate={lastAnimated === name}
-      />
+      <div animate:flip={{ duration: 260 }}>
+        <ScriptItem
+          {name}
+          command={projectState.scripts[name]}
+        />
+      </div>
     {/each}
-  </ul>
+  </div>
 </aside>
 
 <!-- Resize handle -->
