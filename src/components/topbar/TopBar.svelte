@@ -23,6 +23,7 @@
     projectState.scripts = result.scripts;
     projectState.dir = result.projectDir;
     projectState.name = result.projectName;
+    window.syncBookmarksForCurrentProject?.();
     window.saveAllSettings?.();
   }
 

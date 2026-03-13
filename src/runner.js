@@ -44,22 +44,34 @@ window.onStopAllComplete = () => {
   updateStopAllButton();
 };
 
+// Project-scoped bookmarks: dir -> array of script names. Kept in sync with main via save; used when switching project.
+let bookmarksByProject = Object.create(null);
+
+function syncBookmarksForCurrentProject() {
+  const dir = projectState.dir;
+  projectState.bookmarks = new Set(dir ? (bookmarksByProject[dir] || []) : []);
+}
+
 function saveAllSettings() {
   const sidebarWidth = window.getSidebarWidth?.() ?? null;
-  // Build a plain object so IPC structured clone never sees Svelte proxy-backed state.
+  const dir = projectState.dir;
+  if (dir) {
+    bookmarksByProject[dir] = Array.from(projectState.bookmarks);
+  }
   const payload = {
     packageManager: String(projectState.packageManager),
-    bookmarks: Array.from(projectState.bookmarks),
     savedProjects: (projectState.savedProjects || []).map((p) => ({
       name: p?.name,
       filePath: p?.filePath,
     })),
+    ...(dir ? { projectDir: dir, bookmarks: bookmarksByProject[dir] } : {}),
     ...(sidebarWidth != null && sidebarWidth > 0 ? { sidebarWidth: Math.round(sidebarWidth) } : {}),
   };
   api.saveSettings(payload);
 }
 
 window.saveAllSettings = saveAllSettings;
+window.syncBookmarksForCurrentProject = syncBookmarksForCurrentProject;
 
 // ─────────────────────────────────────────────────────────
 // Pane / tab helpers (use panes store; no DOM)
@@ -492,8 +504,10 @@ api.onScriptError(({ id, data }) => {
 
   const settings = await api.getSettings();
   if (settings?.packageManager) projectState.packageManager = settings.packageManager;
-  if (settings?.bookmarks)      projectState.bookmarks = new Set(settings.bookmarks);
-  if (settings?.savedProjects)  projectState.savedProjects = settings.savedProjects;
+  if (settings?.bookmarksByProject && typeof settings.bookmarksByProject === 'object') {
+    bookmarksByProject = settings.bookmarksByProject;
+  }
+  if (settings?.savedProjects) projectState.savedProjects = settings.savedProjects;
   if (settings?.sidebarWidth != null && settings.sidebarWidth >= 180) {
     window.setInitialSidebarWidth?.(settings.sidebarWidth);
   }
@@ -504,6 +518,7 @@ api.onScriptError(({ id, data }) => {
   projectState.scripts = result.scripts;
   projectState.name    = result.projectName;
   projectState.dir     = result.projectDir;
+  syncBookmarksForCurrentProject();
 })();
 
 window.addEventListener('resize', scheduleFitVisibleTerminals);

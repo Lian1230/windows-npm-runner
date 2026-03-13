@@ -326,8 +326,16 @@ ipcMain.handle('detect-managers', async () => {
 
 // Settings
 ipcMain.handle('get-settings', () => readSettings());
-ipcMain.handle('save-settings', (_event, settings) => {
-  saveSettings(settings);
+ipcMain.handle('save-settings', (_event, payload) => {
+  const existing = readSettings();
+  if (payload.projectDir != null && payload.projectDir !== '') {
+    existing.bookmarksByProject = existing.bookmarksByProject || {};
+    existing.bookmarksByProject[payload.projectDir] = payload.bookmarks || [];
+  }
+  if (payload.packageManager !== undefined) existing.packageManager = payload.packageManager;
+  if (payload.savedProjects !== undefined) existing.savedProjects = payload.savedProjects;
+  if (payload.sidebarWidth != null) existing.sidebarWidth = payload.sidebarWidth;
+  saveSettings(existing);
 });
 
 // Run a script
