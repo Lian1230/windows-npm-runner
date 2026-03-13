@@ -7,11 +7,10 @@
 
   function toggleBookmark(e) {
     e.stopPropagation();
-    if (projectState.bookmarks.has(name)) {
-      projectState.bookmarks.delete(name);
-    } else {
-      projectState.bookmarks.add(name);
-    }
+    const next = new Set(projectState.bookmarks);
+    if (next.has(name)) next.delete(name);
+    else next.add(name);
+    projectState.bookmarks = next;
     window.saveAllSettings?.();
   }
 

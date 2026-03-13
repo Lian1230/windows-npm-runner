@@ -46,12 +46,17 @@ window.onStopAllComplete = () => {
 
 function saveAllSettings() {
   const sidebarWidth = window.getSidebarWidth?.() ?? null;
-  api.saveSettings({
-    packageManager: projectState.packageManager,
-    bookmarks: [...projectState.bookmarks],
-    savedProjects: projectState.savedProjects,
+  // Build a plain object so IPC structured clone never sees Svelte proxy-backed state.
+  const payload = {
+    packageManager: String(projectState.packageManager),
+    bookmarks: Array.from(projectState.bookmarks),
+    savedProjects: (projectState.savedProjects || []).map((p) => ({
+      name: p?.name,
+      filePath: p?.filePath,
+    })),
     ...(sidebarWidth != null && sidebarWidth > 0 ? { sidebarWidth: Math.round(sidebarWidth) } : {}),
-  });
+  };
+  api.saveSettings(payload);
 }
 
 window.saveAllSettings = saveAllSettings;
