@@ -87,7 +87,7 @@ window.syncBookmarksForCurrentProject = syncBookmarksForCurrentProject;
 function addTabToPane(paneId, id, tab) {
   tab.paneId = paneId;
   tabs.set(id, tab);
-  tabsState.tabs[id] = { script: tab.script, status: 'idle', running: false, busy: false, paneId };
+  tabsState.tabs[id] = { script: tab.script, projectDir: tab.projectDir, status: 'idle', running: false, busy: false, paneId };
   const order = tabsState.orderByPane[paneId] ?? [];
   order.push(id);
   tabsState.orderByPane[paneId] = order;
@@ -302,6 +302,7 @@ function createTerminalTab(name) {
 
   return {
     script: name,
+    projectDir: projectState.dir,
     term,
     fitAddon,
     running: false,
@@ -314,7 +315,7 @@ function openScriptTab(name, options = {}) {
   ensureRoot();
 
   for (const [existingId, existingTab] of tabs) {
-    if (existingTab.script !== name) continue;
+    if (existingTab.script !== name || existingTab.projectDir !== projectState.dir) continue;
     const paneId = existingTab.paneId;
     if (paneId) switchTab(paneId, existingId);
     if (!existingTab.running && !existingTab.busy) startScript(existingId);

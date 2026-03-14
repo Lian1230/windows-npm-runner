@@ -6,6 +6,17 @@
   const tabData = $derived(tabsState.tabs[tabId]);
   const isActive = $derived(tabsState.activeByPane[paneId] === tabId);
 
+  const tabLabel = $derived.by(() => {
+    const name = tabData?.script ?? '';
+    if (!tabData?.projectDir) return name;
+    const hasDuplicate = Object.values(tabsState.tabs).some(
+      t => t !== tabData && t.script === name && t.projectDir !== tabData.projectDir
+    );
+    if (!hasDuplicate) return name;
+    const projectName = tabData.projectDir.replace(/[\\/]+$/, '').split(/[\\/]/).pop();
+    return `${name} (${projectName})`;
+  });
+
   const statusDotClass = $derived(
     tabData?.status === 'running'     ? 'bg-green shadow-[0_0_6px_rgba(166,227,161,0.4)]' :
     tabData?.status === 'exited-ok'   ? 'bg-muted' :
@@ -87,7 +98,7 @@
   ondrop={handleDrop}
 >
   <span class="status-dot w-2 h-2 rounded-full shrink-0 {statusDotClass}"></span>
-  <span class="tab-name">{tabData?.script ?? ''}</span>
+  <span class="tab-name">{tabLabel}</span>
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <span
     class="tab-close flex items-center justify-center w-4.5 h-4.5 rounded text-sm text-muted transition-colors duration-[0.12s] hover:bg-red/20 hover:text-red"
