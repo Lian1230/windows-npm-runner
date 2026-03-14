@@ -6,7 +6,7 @@
   "scripts": {
     "start": "electron .",
     "dev:renderer": "vite",
-    "dev": "concurrently -k -n VITE,ELECTRON -c cyan,yellow \"bun run dev:renderer\" \"wait-on http://localhost:5173 && electron . --dev\"",
+    "dev": "concurrently -k -n VITE,TW,ELECTRON -c cyan,magenta,yellow \"bun run dev:renderer\" \"bun run tailwind:watch\" \"wait-on http://localhost:5173 && electron . --dev\"",
     "build:css": "tailwindcss -i tailwind-src.css -o tailwind.css",
     "tailwind:watch": "tailwindcss -i tailwind-src.css -o tailwind.css --watch",
     "build:renderer": "vite build",

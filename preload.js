@@ -17,6 +17,8 @@ contextBridge.exposeInMainWorld('api', {
     return ipcRenderer.invoke('stop-all-scripts');
   },
 
+  killPort: (port) => ipcRenderer.invoke('kill-port', { port }),
+
   detectManagers: () => ipcRenderer.invoke('detect-managers'),
   getSettings: () => ipcRenderer.invoke('get-settings'),
   saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),

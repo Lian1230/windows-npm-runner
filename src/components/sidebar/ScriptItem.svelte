@@ -33,7 +33,7 @@
   class="script-item group flex items-center gap-2 py-1.5 pr-1 pl-2.5 rounded-md cursor-pointer text-[13px] font-mono transition-colors duration-[0.12s] text-[#cdd6f4] mb-0.5 hover:bg-accent/10"
   class:bookmarked={isBookmarked}
   class:border-l-2={isBookmarked}
-  class:border-l-yellow={isBookmarked}
+  class:border-l-orange-400={isBookmarked}
   class:pl-2={isBookmarked}
   title={command}
   onclick={run}
@@ -51,9 +51,9 @@
   <div class="script-actions flex items-center gap-0.5 max-w-0 overflow-hidden shrink-0 transition-[max-width] duration-200 ease-out -ml-1 group-hover:max-w-[56px]">
     <button
       type="button"
-      class="script-bookmark-btn flex items-center justify-center w-6 h-6 border-0 rounded bg-transparent cursor-pointer opacity-0 transition-all duration-[0.12s] text-muted hover:text-yellow hover:bg-yellow/10 group-hover:opacity-100"
+      class="script-bookmark-btn flex items-center justify-center w-6 h-6 border-0 rounded bg-transparent cursor-pointer opacity-0 transition-all duration-[0.12s] text-muted hover:text-orange-400 hover:bg-orange-400/10 group-hover:opacity-100"
       class:active={isBookmarked}
-      class:text-yellow={isBookmarked}
+      class:text-orange-400={isBookmarked}
       title={isBookmarked ? 'Remove bookmark' : 'Bookmark'}
       onclick={toggleBookmark}
     >

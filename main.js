@@ -404,6 +404,27 @@ ipcMain.handle('stop-all-scripts', async () => {
   await Promise.all(ids.map((id) => killProcess(id)));
 });
 
+// --- Kill port (user-requested) ---
+ipcMain.handle('kill-port', async (_event, { port }) => {
+  const p = parseInt(port, 10);
+  if (!p || p < 1 || p > 65535) return { error: 'Invalid port number.' };
+
+  let killed = false;
+  if (isWin) {
+    const pids = getListeningPidsOnPort(p);
+    for (const pid of pids) {
+      if (taskkillPid(pid, { includeTree: true, timeout: 3000 })) killed = true;
+    }
+  } else if (isMac) {
+    const pids = getListeningPidsOnPortMac(p);
+    for (const pid of pids) {
+      try { process.kill(pid, 'SIGKILL'); killed = true; } catch { /* ignore */ }
+    }
+  }
+
+  return killed ? { ok: true } : { error: `Nothing listening on port ${p}.` };
+});
+
 // --- Port detection from script output ---
 // Matches "localhost:3000", "0.0.0.0:5173", "192.168.1.2:8080", "[::]:3000",
 // "port 3000", "Port 3000", etc.

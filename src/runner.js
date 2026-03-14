@@ -32,6 +32,12 @@ function updateStopAllButton() {
   tabsState.hasAnyRunning = [...tabs.values()].some((t) => t.running);
 }
 
+window.clearAllTerminals = () => {
+  for (const tab of tabs.values()) {
+    tab.term.clear();
+  }
+};
+
 window.onStopAllComplete = () => {
   for (const [id, tab] of tabs) {
     if (tab.running) {

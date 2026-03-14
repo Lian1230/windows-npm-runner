@@ -62,6 +62,56 @@
     window.onStopAllComplete?.();
     stopping = false;
   }
+
+  const hasAnyTabs = $derived(Object.keys(tabsState.tabs).length > 0);
+
+  function clearAll() {
+    window.clearAllTerminals?.();
+  }
+
+  let killPortOpen = $state(false);
+  let killPortValue = $state('');
+  let killPortBusy = $state(false);
+  let killPortMsg = $state('');
+  let killPortInputEl = $state(null);
+  let killPortWrapperEl = $state(null);
+
+  function toggleKillPort() {
+    killPortOpen = !killPortOpen;
+    killPortMsg = '';
+    if (killPortOpen) {
+      killPortValue = '';
+      setTimeout(() => killPortInputEl?.focus(), 0);
+      setTimeout(() => document.addEventListener('mousedown', onClickOutsideKillPort), 0);
+    } else {
+      document.removeEventListener('mousedown', onClickOutsideKillPort);
+    }
+  }
+
+  function onClickOutsideKillPort(e) {
+    if (killPortWrapperEl && !killPortWrapperEl.contains(e.target)) {
+      killPortOpen = false;
+      document.removeEventListener('mousedown', onClickOutsideKillPort);
+    }
+  }
+
+  async function doKillPort() {
+    const port = parseInt(killPortValue, 10);
+    if (!port || port < 1 || port > 65535) {
+      killPortMsg = 'Invalid port';
+      return;
+    }
+    killPortBusy = true;
+    killPortMsg = '';
+    const result = await window.api.killPort(port);
+    killPortBusy = false;
+    if (result.ok) {
+      killPortMsg = `Killed port ${port}`;
+      setTimeout(() => { killPortOpen = false; killPortMsg = ''; }, 1200);
+    } else {
+      killPortMsg = result.error;
+    }
+  }
 </script>
 
 <header
@@ -104,7 +154,7 @@
         id="btn-save-project"
         type="button"
         title={isSaved ? 'Remove from saved' : 'Save project'}
-        class="flex items-center justify-center w-[26px] h-[26px] p-0 border-0 rounded-md bg-transparent cursor-pointer shrink-0 transition-colors duration-[0.12s] {isSaved ? 'text-yellow hover:bg-yellow/10' : 'text-muted hover:bg-white/10'}"
+        class="flex items-center justify-center w-[26px] h-[26px] p-0 border-0 rounded-md bg-transparent cursor-pointer shrink-0 transition-colors duration-[0.12s] {isSaved ? 'text-orange-400 hover:bg-orange-400/10' : 'text-muted hover:bg-white/10'}"
         onclick={(e) => { e.stopPropagation(); toggleSaveProject(); }}
       >
         <svg width="14" height="14" viewBox="0 0 16 16" fill={isSaved ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="1.5">
@@ -129,6 +179,63 @@
       </svg>
     </button>
   {/if}
+
+  <!-- Clean All -->
+  {#if hasAnyTabs}
+    <button
+      id="btn-clear-all"
+      type="button"
+      title="Clear all logs"
+      class="flex items-center justify-center w-8 h-8 border-0 rounded-md bg-transparent text-yellow cursor-pointer transition-colors duration-[0.12s] hover:bg-yellow/15 [-webkit-app-region:no-drag]"
+      onclick={clearAll}
+    >
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2 4h12"/><path d="M5.5 4V2.5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V4"/><path d="M12.5 4v9a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 13V4"/>
+      </svg>
+    </button>
+  {/if}
+
+  <!-- Kill Port -->
+  <div bind:this={killPortWrapperEl} class="relative [-webkit-app-region:no-drag]">
+    <button
+      id="btn-kill-port"
+      type="button"
+      title="Kill port"
+      class="flex items-center justify-center w-8 h-8 border-0 rounded-md bg-transparent text-muted cursor-pointer transition-colors duration-[0.12s] hover:text-sapphire hover:bg-sapphire/15"
+      onclick={toggleKillPort}
+    >
+      <svg width="18" height="18" viewBox="0 0 1024 1024" fill="currentColor">
+        <path d="M368 416a112 112 0 1 0 0 224 112 112 0 0 0 0-224z m0 160a48 48 0 1 1 0-96 48 48 0 0 1 0 96z m288-160a112 112 0 1 0 0 224 112 112 0 0 0 0-224z m0 160a48 48 0 1 1 0-96 48 48 0 0 1 0 96zM512 64C282.592 64 96 243.424 96 464c0 136.384 73.088 264 192 337.12V864a64 64 0 0 0 64 64h320a64 64 0 0 0 64-64v-62.88c118.912-73.12 192-200.736 192-337.12C928 243.424 741.408 64 512 64z m176.48 690.752a32 32 0 0 0-16.48 28V864h-64v-96a32 32 0 0 0-64 0v96h-64v-96a32 32 0 0 0-64 0v96h-64v-81.248a32 32 0 0 0-16.48-28C227.232 694.752 160 583.36 160 464 160 278.72 317.92 128 512 128s352 150.72 352 336c0 119.328-67.232 230.752-175.52 290.752z"/>
+      </svg>
+    </button>
+    {#if killPortOpen}
+      <div class="absolute right-0 top-full mt-2 bg-surface border border-border rounded-lg shadow-lg p-3 z-50 w-52">
+        <label class="text-[11px] text-muted mb-1.5 block">Kill process on port</label>
+        <form class="flex gap-1.5" onsubmit={(e) => { e.preventDefault(); doKillPort(); }}>
+          <input
+            bind:this={killPortInputEl}
+            bind:value={killPortValue}
+            type="number"
+            min="1"
+            max="65535"
+            placeholder="3000"
+            disabled={killPortBusy}
+            class="flex-1 min-w-0 px-2 py-1 bg-base border border-border rounded-md text-[13px] text-[#cdd6f4] outline-none focus:border-accent placeholder:text-muted/50 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          />
+          <button
+            type="submit"
+            disabled={killPortBusy}
+            class="px-2.5 py-1 bg-red text-overlay border-0 rounded-md text-[12px] font-semibold cursor-pointer hover:opacity-85 disabled:opacity-40 disabled:cursor-wait"
+          >
+            Kill
+          </button>
+        </form>
+        {#if killPortMsg}
+          <p class="text-[11px] mt-1.5 {killPortMsg.startsWith('Killed') ? 'text-green' : 'text-red'}">{killPortMsg}</p>
+        {/if}
+      </div>
+    {/if}
+  </div>
 
   <!-- Settings -->
   <button

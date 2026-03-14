@@ -96,7 +96,7 @@
     <!-- Clear -->
     <button
       type="button"
-      class="ctrl-btn flex items-center justify-center w-7 h-7 border-0 rounded-md bg-transparent text-muted cursor-pointer transition-all duration-[0.12s] hover:text-yellow hover:bg-yellow/10"
+      class="ctrl-btn flex items-center justify-center w-7 h-7 border-0 rounded-md bg-transparent text-muted cursor-pointer transition-all duration-[0.12s] hover:text-yellow hover:bg-yellow/15"
       title="Clear"
       onclick={() => tab?.term.clear()}
     >
