@@ -4,6 +4,7 @@
  */
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
+import { WebLinksAddon } from '@xterm/addon-web-links';
 import {
   projectState,
   contextMenuState,
@@ -289,6 +290,7 @@ function createTerminalTab(name) {
 
   const fitAddon = new FitAddon();
   term.loadAddon(fitAddon);
+  term.loadAddon(new WebLinksAddon((_event, url) => window.api.openExternal(url)));
 
   term.attachCustomKeyEventHandler((e) => {
     if (e.ctrlKey && e.key === 'c' && term.hasSelection()) {

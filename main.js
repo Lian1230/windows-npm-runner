@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, protocol } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, protocol, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn, execSync, spawnSync } = require('child_process');
@@ -405,6 +405,8 @@ ipcMain.handle('stop-all-scripts', async () => {
 });
 
 // --- Kill port (user-requested) ---
+ipcMain.handle('open-external', (_event, url) => shell.openExternal(url));
+
 ipcMain.handle('kill-port', async (_event, { port }) => {
   const p = parseInt(port, 10);
   if (!p || p < 1 || p > 65535) return { error: 'Invalid port number.' };

@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('api', {
   },
 
   killPort: (port) => ipcRenderer.invoke('kill-port', { port }),
+  openExternal: (url) => ipcRenderer.invoke('open-external', url),
 
   detectManagers: () => ipcRenderer.invoke('detect-managers'),
   getSettings: () => ipcRenderer.invoke('get-settings'),

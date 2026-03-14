@@ -186,10 +186,10 @@
       id="btn-clear-all"
       type="button"
       title="Clear all logs"
-      class="flex items-center justify-center w-8 h-8 border-0 rounded-md bg-transparent text-yellow cursor-pointer transition-colors duration-[0.12s] hover:bg-yellow/15 [-webkit-app-region:no-drag]"
+      class="flex items-center justify-center w-8 h-8 border-0 rounded-md bg-transparent text-yellow/50 cursor-pointer transition-colors duration-[0.12s] hover:bg-yellow/15 hover:text-yellow [-webkit-app-region:no-drag]"
       onclick={clearAll}
     >
-      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
         <path d="M2 4h12"/><path d="M5.5 4V2.5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V4"/><path d="M12.5 4v9a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 13V4"/>
       </svg>
     </button>
