@@ -364,7 +364,7 @@ function startScript(id) {
   updateTabStatus(id, 'running');
 
   tab.term.writeln(`\x1b[90m$ ${projectState.packageManager} run ${tab.script}\x1b[0m\r\n`);
-  api.runScript(id, tab.script, projectState.dir);
+  api.runScript(id, tab.script, tab.projectDir);
   updateStopAllButton();
 }
 
@@ -415,7 +415,7 @@ async function rerunScript(id) {
     tabsState.tabs[id].busy = false;
   }
   updateTabStatus(id, 'running');
-  api.runScript(id, tab.script, projectState.dir);
+  api.runScript(id, tab.script, tab.projectDir);
 }
 
 function closeTab(id) {
